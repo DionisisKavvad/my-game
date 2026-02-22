@@ -7,6 +7,9 @@ import { RedisModule } from './redis/redis.module';
 import { HealthController } from './health/health.controller';
 import { AuthModule } from './auth/auth.module';
 import { PlayersModule } from './players/players.module';
+import { BattlesModule } from './battles/battles.module';
+import { QuestsModule } from './quests/quests.module';
+import { ScheduledModule } from './scheduled/scheduled.module';
 
 @Module({
   imports: [
@@ -29,6 +32,9 @@ import { PlayersModule } from './players/players.module';
     RedisModule,
     AuthModule,
     PlayersModule,
+    BattlesModule,
+    QuestsModule,
+    ScheduledModule,
   ],
   controllers: [HealthController],
 })

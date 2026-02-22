@@ -4,6 +4,7 @@ const prisma = new PrismaClient();
 
 const heroTemplates = [
   {
+    id: 'warrior_bold',
     name: 'Aric the Bold',
     class: 'warrior',
     rarity: 'common',
@@ -33,6 +34,7 @@ const heroTemplates = [
     spriteKey: 'hero_warrior',
   },
   {
+    id: 'mage_fire',
     name: 'Lyra the Wise',
     class: 'mage',
     rarity: 'rare',
@@ -61,6 +63,7 @@ const heroTemplates = [
     spriteKey: 'hero_mage',
   },
   {
+    id: 'healer_light',
     name: 'Seraphina',
     class: 'healer',
     rarity: 'rare',
@@ -91,6 +94,7 @@ const heroTemplates = [
     spriteKey: 'hero_healer',
   },
   {
+    id: 'archer_swift',
     name: 'Kael Swiftarrow',
     class: 'archer',
     rarity: 'common',
@@ -119,6 +123,7 @@ const heroTemplates = [
     spriteKey: 'hero_archer',
   },
   {
+    id: 'tank_iron',
     name: 'Gorath Ironwall',
     class: 'tank',
     rarity: 'epic',

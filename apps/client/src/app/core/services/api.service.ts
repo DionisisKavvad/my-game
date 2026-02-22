@@ -10,18 +10,18 @@ export class ApiService {
   constructor(private http: HttpClient) {}
 
   get<T>(path: string): Observable<T> {
-    return this.http.get<T>(`${this.baseUrl}${path}`);
+    return this.http.get<T>(`${this.baseUrl}${path}`, { withCredentials: true });
   }
 
   post<T>(path: string, body: object): Observable<T> {
-    return this.http.post<T>(`${this.baseUrl}${path}`, body);
+    return this.http.post<T>(`${this.baseUrl}${path}`, body, { withCredentials: true });
   }
 
   put<T>(path: string, body: object): Observable<T> {
-    return this.http.put<T>(`${this.baseUrl}${path}`, body);
+    return this.http.put<T>(`${this.baseUrl}${path}`, body, { withCredentials: true });
   }
 
   delete<T>(path: string): Observable<T> {
-    return this.http.delete<T>(`${this.baseUrl}${path}`);
+    return this.http.delete<T>(`${this.baseUrl}${path}`, { withCredentials: true });
   }
 }

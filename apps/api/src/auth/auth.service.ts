@@ -10,11 +10,14 @@ import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { StructuredLogger } from '../common/logger/structured-logger';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { GAME_CONFIG } from '@hero-wars/shared';
 
 const BCRYPT_ROUNDS = 12;
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_SECONDS = 900; // 15 minutes
 
 @Injectable()
 export class AuthService {
@@ -52,6 +55,7 @@ export class AuthService {
     });
 
     const tokens = await this.generateTokens(player.id, player.username);
+    StructuredLogger.info('auth.register.success', { userId: player.id, username: player.username });
     return { ...tokens, player: this.sanitizePlayer(player) };
   }
 
@@ -61,30 +65,48 @@ export class AuthService {
     });
 
     if (!player) {
+      StructuredLogger.warn('auth.login.failure', { username: dto.username, reason: 'user_not_found' });
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Check login lockout
+    const lockoutKey = `login_failures:${dto.username}`;
+    const failureCount = await this.redisService.get(lockoutKey);
+    if (failureCount && parseInt(failureCount, 10) >= MAX_LOGIN_ATTEMPTS) {
+      const remainingSeconds = await this.redisService.ttl(lockoutKey);
+      StructuredLogger.warn('auth.login.lockout', { username: dto.username, remainingSeconds });
+      throw new ForbiddenException(
+        `Account temporarily locked. Try again in ${Math.ceil(remainingSeconds / 60)} minute(s).`,
+      );
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, player.passwordHash);
     if (!isPasswordValid) {
+      await this.redisService.incr(lockoutKey);
+      await this.redisService.expire(lockoutKey, LOCKOUT_DURATION_SECONDS);
+      StructuredLogger.warn('auth.login.failure', { username: dto.username, reason: 'invalid_password' });
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // Clear failure counter on successful login
+    await this.redisService.del(lockoutKey);
+
     const tokens = await this.generateTokens(player.id, player.username);
+    StructuredLogger.info('auth.login.success', { userId: player.id, username: player.username });
     return { ...tokens, player: this.sanitizePlayer(player) };
   }
 
   async refreshByToken(refreshToken: string) {
-    // Look up userId from refresh token
-    const userId = await this.redisService.get(`refresh_lookup:${refreshToken}`);
+    // Atomic: read and delete the lookup in one operation to prevent race conditions
+    const userId = await this.redisService.getAndDelete(`refresh_lookup:${refreshToken}`);
     if (!userId) {
       throw new ForbiddenException('Invalid refresh token');
     }
 
-    // Verify the stored token matches (rotation check)
-    const storedToken = await this.redisService.get(`refresh:${userId}`);
+    // Atomic: read and delete the stored token
+    const storedToken = await this.redisService.getAndDelete(`refresh:${userId}`);
     if (!storedToken || storedToken !== refreshToken) {
-      await this.redisService.del(`refresh:${userId}`);
-      await this.redisService.del(`refresh_lookup:${refreshToken}`);
+      // Token was already used or doesn't match — potential replay attack
       throw new ForbiddenException('Invalid refresh token');
     }
 
@@ -96,10 +118,8 @@ export class AuthService {
       throw new ForbiddenException('Player not found');
     }
 
-    // Delete old lookup before generating new tokens
-    await this.redisService.del(`refresh_lookup:${refreshToken}`);
-
     const tokens = await this.generateTokens(player.id, player.username);
+    StructuredLogger.info('auth.token.refresh', { userId: player.id });
     return { ...tokens, player: this.sanitizePlayer(player) };
   }
 
@@ -109,7 +129,12 @@ export class AuthService {
       await this.redisService.del(`refresh_lookup:${refreshToken}`);
     }
     await this.redisService.del(`refresh:${userId}`);
+    StructuredLogger.info('auth.logout', { userId });
     return { message: 'Logged out successfully' };
+  }
+
+  getRefreshTtl(): number {
+    return this.configService.get<number>('JWT_REFRESH_TTL', 2592000);
   }
 
   private async generateTokens(userId: string, username: string) {
@@ -121,7 +146,7 @@ export class AuthService {
     });
 
     const refreshToken = uuidv4();
-    const refreshTtl = this.configService.get<number>('JWT_REFRESH_TTL', 2592000);
+    const refreshTtl = this.getRefreshTtl();
 
     // Store refresh token in Redis with TTL (both directions for lookup)
     await this.redisService.set(`refresh:${userId}`, refreshToken, refreshTtl);

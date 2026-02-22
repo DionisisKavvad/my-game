@@ -25,14 +25,12 @@ export class BattleSimulator {
   }
 
   run(): BattleLog {
-    const startTime = Date.now();
-
     while (this.currentTurn < GAME_CONFIG.battle.maxTurns) {
       this.currentTurn++;
 
       // Sort by speed (descending) for turn order
       const aliveHeroes = this.getAliveHeroes();
-      aliveHeroes.sort((a, b) => b.stats.speed - a.stats.speed);
+      aliveHeroes.sort((a, b) => b.stats.speed - a.stats.speed || a.id.localeCompare(b.id));
 
       for (const hero of aliveHeroes) {
         if (hero.currentHp <= 0) continue;
@@ -45,12 +43,12 @@ export class BattleSimulator {
 
         const result = this.checkBattleEnd();
         if (result) {
-          return this.buildLog(result, startTime);
+          return this.buildLog(result);
         }
       }
     }
 
-    return this.buildLog('timeout', startTime);
+    return this.buildLog('timeout');
   }
 
   private getAliveHeroes(): BattleHero[] {
@@ -102,13 +100,13 @@ export class BattleSimulator {
     return null;
   }
 
-  private buildLog(result: BattleResult, startTime: number): BattleLog {
+  private buildLog(result: BattleResult): BattleLog {
     return {
       seed: this.config.seed,
       turns: this.turns,
       result,
       totalTurns: this.currentTurn,
-      durationMs: Date.now() - startTime,
+      durationMs: 0,
     };
   }
 }

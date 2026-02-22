@@ -3,12 +3,8 @@ import { Router } from '@angular/router';
 import { Observable, tap, catchError, throwError, BehaviorSubject, switchMap, filter, take } from 'rxjs';
 import { ApiService } from './api.service';
 
-interface AuthTokens {
+interface AuthResponse {
   accessToken: string;
-  refreshToken: string;
-}
-
-interface AuthResponse extends AuthTokens {
   player: PlayerData;
 }
 
@@ -27,7 +23,6 @@ interface PlayerData {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly TOKEN_KEY = 'hw_access_token';
-  private readonly REFRESH_KEY = 'hw_refresh_token';
 
   private isRefreshing = false;
   private refreshTokenSubject = new BehaviorSubject<string | null>(null);
@@ -76,16 +71,11 @@ export class AuthService {
     this.isRefreshing = true;
     this.refreshTokenSubject.next(null);
 
-    const refreshToken = this.getRefreshToken();
-    if (!refreshToken) {
-      this.logout();
-      return throwError(() => new Error('No refresh token'));
-    }
-
-    return this.api.post<AuthResponse>('/auth/refresh', { refreshToken }).pipe(
+    // Refresh token is sent automatically via HttpOnly cookie
+    return this.api.post<AuthResponse>('/auth/refresh', {}).pipe(
       tap((res) => {
         this.isRefreshing = false;
-        this.storeTokens(res);
+        this.storeAccessToken(res.accessToken);
         this.refreshTokenSubject.next(res.accessToken);
       }),
       catchError((err) => {
@@ -100,23 +90,17 @@ export class AuthService {
     return localStorage.getItem(this.TOKEN_KEY);
   }
 
-  getRefreshToken(): string | null {
-    return localStorage.getItem(this.REFRESH_KEY);
-  }
-
   private handleAuthResponse(res: AuthResponse): void {
-    this.storeTokens(res);
+    this.storeAccessToken(res.accessToken);
     this.player.set(res.player);
   }
 
-  private storeTokens(tokens: AuthTokens): void {
-    localStorage.setItem(this.TOKEN_KEY, tokens.accessToken);
-    localStorage.setItem(this.REFRESH_KEY, tokens.refreshToken);
+  private storeAccessToken(accessToken: string): void {
+    localStorage.setItem(this.TOKEN_KEY, accessToken);
   }
 
   private clearTokens(): void {
     localStorage.removeItem(this.TOKEN_KEY);
-    localStorage.removeItem(this.REFRESH_KEY);
   }
 
   private loadProfile(): void {
