@@ -9,29 +9,26 @@ export class ScheduledTasksService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Reset daily quests at midnight UTC.
+   * Clean up old daily quests at midnight UTC.
+   * Keeps yesterday's quests for a grace period (in-flight battles).
+   * ensurePlayerQuests() self-heals any remaining stale quests on access.
    */
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, { name: 'daily-quest-reset' })
   async handleDailyQuestReset() {
     StructuredLogger.info('scheduled.dailyQuestReset.start');
 
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
+    const yesterday = new Date();
+    yesterday.setUTCHours(0, 0, 0, 0);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
 
-    const result = await this.prisma.dailyQuest.updateMany({
+    const result = await this.prisma.dailyQuest.deleteMany({
       where: {
-        resetDate: { lt: today },
-      },
-      data: {
-        progress: 0,
-        completed: false,
-        claimed: false,
-        resetDate: today,
+        resetDate: { lt: yesterday },
       },
     });
 
     StructuredLogger.info('scheduled.dailyQuestReset.done', {
-      questsReset: result.count,
+      questsDeleted: result.count,
     });
   }
 

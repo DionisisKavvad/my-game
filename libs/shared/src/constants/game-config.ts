@@ -49,4 +49,14 @@ export const GAME_CONFIG = {
   xp: {
     playerXpPerLevel: (level: number): number => Math.floor(200 * Math.pow(1.2, level - 1)),
   },
+
+  quests: {
+    dailyQuestCount: 5,
+    loginQuestId: 'daily_login',
+  },
+
+  leaderboard: {
+    pageSize: 50,
+    maxEntries: 1000,
+  },
 } as const;

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { CampaignService } from '../../core/services/campaign.service';
+import { QuestsService } from '../../core/services/quests.service';
 
 @Component({
   selector: 'app-lobby',
@@ -37,13 +38,22 @@ import { CampaignService } from '../../core/services/campaign.service';
             <h3>Heroes</h3>
             <p>Manage your hero collection</p>
           </div>
+          <div class="menu-card" routerLink="/quests">
+            <h3>Daily Quests</h3>
+            <p>Complete daily challenges</p>
+            <span class="quest-progress">{{ claimedQuests() }}/{{ totalQuests() }} Done</span>
+          </div>
+          <div class="menu-card" routerLink="/leaderboard">
+            <h3>Leaderboard</h3>
+            <p>Compete with other players</p>
+          </div>
+          <div class="menu-card" routerLink="/profile">
+            <h3>Profile</h3>
+            <p>View your stats and progress</p>
+          </div>
           <div class="menu-card" routerLink="/battle/1-1">
             <h3>Battle</h3>
             <p>Enter the battlefield</p>
-          </div>
-          <div class="menu-card disabled">
-            <h3>Shop</h3>
-            <p>Coming in Sprint 4</p>
           </div>
         </div>
       </main>
@@ -117,20 +127,11 @@ import { CampaignService } from '../../core/services/campaign.service';
       text-align: center;
       border: 2px solid transparent;
       transition: all 0.2s;
-    }
-    .menu-card:not(.disabled) {
       cursor: pointer;
     }
-    .menu-card:not(.disabled):hover {
+    .menu-card:hover {
       border-color: #e94560;
       transform: translateY(-2px);
-    }
-    .menu-card:not(.disabled) p {
-      color: #aaa;
-    }
-    .menu-card.disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
     }
     .menu-card h3 {
       color: #e94560;
@@ -138,10 +139,11 @@ import { CampaignService } from '../../core/services/campaign.service';
       font-size: 1.25rem;
     }
     .menu-card p {
-      color: #888;
+      color: #aaa;
       font-size: 0.875rem;
     }
-    .campaign-progress {
+    .campaign-progress,
+    .quest-progress {
       display: block;
       margin-top: 0.5rem;
       color: #7fff00;
@@ -155,12 +157,22 @@ export class LobbyComponent implements OnInit {
     return this.campaignService.stages().filter((s) => s.completed).length;
   });
 
+  readonly claimedQuests = computed(() => {
+    return this.questsService.quests().filter((q) => q.claimed).length;
+  });
+
+  readonly totalQuests = computed(() => {
+    return this.questsService.quests().length;
+  });
+
   constructor(
     public authService: AuthService,
     private campaignService: CampaignService,
+    private questsService: QuestsService,
   ) {}
 
   ngOnInit(): void {
     this.campaignService.loadStages().subscribe();
+    this.questsService.loadQuests().subscribe();
   }
 }

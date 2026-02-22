@@ -14,6 +14,8 @@ import {
   calculateHeroStats,
 } from '@hero-wars/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { QuestsService } from '../quests/quests.service';
+import { LeaderboardService } from '../leaderboard/leaderboard.service';
 import { StructuredLogger } from '../common/logger/structured-logger';
 import { UpgradeHeroDto } from './dto/upgrade-hero.dto';
 import { UpdateTeamDto } from './dto/update-team.dto';
@@ -22,7 +24,11 @@ type PrismaTransactionClient = Parameters<Parameters<PrismaService['$transaction
 
 @Injectable()
 export class HeroesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private questsService: QuestsService,
+    private leaderboardService: LeaderboardService,
+  ) {}
 
   async getTemplates(): Promise<HeroTemplateResponse[]> {
     const templates = await this.prisma.heroTemplate.findMany();
@@ -229,6 +235,23 @@ export class HeroesService {
       goldCost,
     });
 
+    // Fire-and-forget: quest progress + leaderboard
+    this.questsService.incrementQuestProgress(playerId, 'upgrade_hero', 1).catch((err) =>
+      StructuredLogger.error('heroes.questProgress.failed', {
+        playerId,
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
+    this.leaderboardService
+      .calculatePowerScore(playerId)
+      .then((score) => this.leaderboardService.updateScore(playerId, 'power', score))
+      .catch((err) =>
+        StructuredLogger.error('heroes.leaderboard.power.failed', {
+          playerId,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+
     return {
       hero: this.mapPlayerHero(result.updatedHero),
       goldSpent: goldCost,
@@ -288,6 +311,23 @@ export class HeroesService {
       newStars: result.updatedHero.stars,
       goldCost,
     });
+
+    // Fire-and-forget: quest progress + leaderboard
+    this.questsService.incrementQuestProgress(playerId, 'upgrade_hero', 1).catch((err) =>
+      StructuredLogger.error('heroes.questProgress.failed', {
+        playerId,
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
+    this.leaderboardService
+      .calculatePowerScore(playerId)
+      .then((score) => this.leaderboardService.updateScore(playerId, 'power', score))
+      .catch((err) =>
+        StructuredLogger.error('heroes.leaderboard.power.failed', {
+          playerId,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
 
     return {
       hero: this.mapPlayerHero(result.updatedHero),

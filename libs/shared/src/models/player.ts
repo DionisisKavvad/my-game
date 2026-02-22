@@ -12,9 +12,3 @@ export interface PlayerProfile {
   createdAt: Date;
 }
 
-export interface PlayerStats {
-  totalBattles: number;
-  wins: number;
-  losses: number;
-  campaignProgress: number;
-}

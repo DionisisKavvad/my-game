@@ -12,6 +12,7 @@ import { HeroesModule } from './heroes/heroes.module';
 import { QuestsModule } from './quests/quests.module';
 import { ScheduledModule } from './scheduled/scheduled.module';
 import { CampaignModule } from './campaign/campaign.module';
+import { LeaderboardModule } from './leaderboard/leaderboard.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { CampaignModule } from './campaign/campaign.module';
     QuestsModule,
     ScheduledModule,
     CampaignModule,
+    LeaderboardModule,
   ],
   controllers: [HealthController],
 })

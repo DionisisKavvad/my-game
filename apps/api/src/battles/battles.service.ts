@@ -22,6 +22,8 @@ import {
 } from '@hero-wars/battle-engine';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { QuestsService } from '../quests/quests.service';
+import { LeaderboardService } from '../leaderboard/leaderboard.service';
 import { StructuredLogger } from '../common/logger/structured-logger';
 
 const BATTLE_SEED_PREFIX = 'battle:seed:';
@@ -33,6 +35,8 @@ export class BattlesService {
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
+    private questsService: QuestsService,
+    private leaderboardService: LeaderboardService,
   ) {}
 
   async startBattle(playerId: string, stageId?: string) {
@@ -367,6 +371,46 @@ export class BattlesService {
     // Clean up Redis keys after successful transaction
     await this.redis.del(`${BATTLE_SEED_PREFIX}${battleId}`);
     await this.redis.del(`${BATTLE_LOCK_PREFIX}${playerId}`);
+
+    // Fire-and-forget: quest progress + leaderboard updates (CRIT-2: never block battle response)
+    if (validated && result === 'victory') {
+      // Quest progress
+      try {
+        await this.questsService.incrementQuestProgress(playerId, 'win_battles', 1);
+        if (battle.stageId) {
+          await this.questsService.incrementQuestProgress(playerId, 'complete_campaign', 1);
+          const energyCost = getStage(battle.stageId)?.energyCost ?? GAME_CONFIG.campaign.energyCostPerStage;
+          await this.questsService.incrementQuestProgress(playerId, 'spend_energy', energyCost);
+        }
+      } catch (err) {
+        StructuredLogger.error('battle.questProgress.failed', {
+          playerId,
+          battleId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+
+      // Leaderboard updates - targeted, not full refresh (HIGH-7)
+      this.leaderboardService
+        .updateScore(playerId, 'battles', await this.leaderboardService.calculateBattleScore(playerId))
+        .catch((err) =>
+          StructuredLogger.error('battle.leaderboard.battles.failed', {
+            playerId,
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        );
+
+      if (battle.stageId) {
+        this.leaderboardService
+          .updateScore(playerId, 'campaign', await this.leaderboardService.calculateCampaignScore(playerId))
+          .catch((err) =>
+            StructuredLogger.error('battle.leaderboard.campaign.failed', {
+              playerId,
+              error: err instanceof Error ? err.message : String(err),
+            }),
+          );
+      }
+    }
 
     StructuredLogger.info('battle.completed', {
       battleId,

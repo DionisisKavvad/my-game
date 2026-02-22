@@ -51,6 +51,26 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'quests',
+    loadComponent: () =>
+      import('./features/quests/quests.component').then((m) => m.QuestsComponent),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'leaderboard',
+    loadComponent: () =>
+      import('./features/leaderboard/leaderboard.component').then(
+        (m) => m.LeaderboardComponent,
+      ),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'profile',
+    loadComponent: () =>
+      import('./features/profile/profile.component').then((m) => m.ProfileComponent),
+    canActivate: [authGuard],
+  },
+  {
     path: '',
     redirectTo: 'lobby',
     pathMatch: 'full',

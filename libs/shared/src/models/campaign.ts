@@ -41,18 +41,3 @@ export interface CampaignProgress {
   bestTimeMs: number;
   completedAt: Date;
 }
-
-export interface DailyQuest {
-  id: string;
-  playerId: string;
-  questId: string;
-  name: string;
-  description: string;
-  target: number;
-  progress: number;
-  completed: boolean;
-  claimed: boolean;
-  rewardGold: number;
-  rewardXp: number;
-  resetDate: Date;
-}

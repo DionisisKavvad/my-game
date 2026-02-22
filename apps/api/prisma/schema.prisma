@@ -86,6 +86,7 @@ model Battle {
   player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   @@index([playerId, createdAt])
+  @@index([playerId, validated, result])
   @@map("battles")
 }
 
@@ -106,6 +107,7 @@ model DailyQuest {
   playerId  String   @map("player_id")
   questId   String   @map("quest_id")
   progress  Int      @default(0)
+  target    Int      @default(1)
   completed Boolean  @default(false)
   claimed   Boolean  @default(false)
   resetDate DateTime @map("reset_date")
@@ -114,6 +116,7 @@ model DailyQuest {
 
   @@id([playerId, questId])
   @@index([playerId, resetDate])
+  @@index([playerId, claimed])
   @@map("daily_quests")
 }
 
