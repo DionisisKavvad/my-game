@@ -16,6 +16,11 @@ export const GAME_CONFIG = {
     maxLevel: 100,
     maxStars: 7,
     xpPerLevel: (level: number): number => Math.floor(100 * Math.pow(1.15, level - 1)),
+    goldCostPerLevel: (level: number): number => Math.floor(50 * Math.pow(1.12, level - 1)),
+    starUpgradeGoldCost: (currentStars: number): number => Math.floor(500 * Math.pow(2.5, currentStars - 1)),
+    starUpgradeLevelRequirement: (targetStars: number): number => (targetStars - 1) * 10,
+    maxTeamSize: 5,
+    starterHeroTemplateIds: ['warrior_bold', 'mage_fire', 'healer_light'],
   },
 
   battle: {

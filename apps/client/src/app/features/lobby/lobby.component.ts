@@ -1,11 +1,12 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-lobby',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   template: `
     <div class="lobby-container">
       <header class="lobby-header">
@@ -30,9 +31,9 @@ import { AuthService } from '../../core/services/auth.service';
             <h3>Campaign</h3>
             <p>Coming in Sprint 2</p>
           </div>
-          <div class="menu-card disabled">
+          <div class="menu-card" routerLink="/heroes">
             <h3>Heroes</h3>
-            <p>Coming in Sprint 2</p>
+            <p>Manage your hero collection</p>
           </div>
           <div class="menu-card disabled">
             <h3>Battle</h3>
@@ -114,6 +115,16 @@ import { AuthService } from '../../core/services/auth.service';
       text-align: center;
       border: 2px solid transparent;
       transition: all 0.2s;
+    }
+    .menu-card:not(.disabled) {
+      cursor: pointer;
+    }
+    .menu-card:not(.disabled):hover {
+      border-color: #e94560;
+      transform: translateY(-2px);
+    }
+    .menu-card:not(.disabled) p {
+      color: #aaa;
     }
     .menu-card.disabled {
       opacity: 0.5;

@@ -8,6 +8,7 @@ import { HealthController } from './health/health.controller';
 import { AuthModule } from './auth/auth.module';
 import { PlayersModule } from './players/players.module';
 import { BattlesModule } from './battles/battles.module';
+import { HeroesModule } from './heroes/heroes.module';
 import { QuestsModule } from './quests/quests.module';
 import { ScheduledModule } from './scheduled/scheduled.module';
 
@@ -33,6 +34,7 @@ import { ScheduledModule } from './scheduled/scheduled.module';
     AuthModule,
     PlayersModule,
     BattlesModule,
+    HeroesModule,
     QuestsModule,
     ScheduledModule,
   ],

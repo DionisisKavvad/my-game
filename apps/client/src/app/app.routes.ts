@@ -19,6 +19,24 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'heroes',
+    loadComponent: () =>
+      import('./features/heroes/heroes-list.component').then((m) => m.HeroesListComponent),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'heroes/team',
+    loadComponent: () =>
+      import('./features/heroes/team-builder.component').then((m) => m.TeamBuilderComponent),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'heroes/:id',
+    loadComponent: () =>
+      import('./features/heroes/hero-detail.component').then((m) => m.HeroDetailComponent),
+    canActivate: [authGuard],
+  },
+  {
     path: '',
     redirectTo: 'lobby',
     pathMatch: 'full',

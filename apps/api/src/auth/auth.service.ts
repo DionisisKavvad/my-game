@@ -14,6 +14,7 @@ import { StructuredLogger } from '../common/logger/structured-logger';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { GAME_CONFIG } from '@hero-wars/shared';
+import { HeroesService } from '../heroes/heroes.service';
 
 const BCRYPT_ROUNDS = 12;
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -26,6 +27,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private redisService: RedisService,
+    private heroesService: HeroesService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -42,16 +44,20 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
-    const player = await this.prisma.player.create({
-      data: {
-        username: dto.username,
-        email: dto.email,
-        passwordHash,
-        gold: GAME_CONFIG.player.startingGold,
-        gems: GAME_CONFIG.player.startingGems,
-        energy: GAME_CONFIG.player.startingEnergy,
-        maxEnergy: GAME_CONFIG.energy.maxEnergy,
-      },
+    const player = await this.prisma.$transaction(async (tx) => {
+      const p = await tx.player.create({
+        data: {
+          username: dto.username,
+          email: dto.email,
+          passwordHash,
+          gold: GAME_CONFIG.player.startingGold,
+          gems: GAME_CONFIG.player.startingGems,
+          energy: GAME_CONFIG.player.startingEnergy,
+          maxEnergy: GAME_CONFIG.energy.maxEnergy,
+        },
+      });
+      await this.heroesService.assignStarterHeroes(p.id, tx);
+      return p;
     });
 
     const tokens = await this.generateTokens(player.id, player.username);
