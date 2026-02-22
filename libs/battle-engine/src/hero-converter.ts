@@ -57,7 +57,11 @@ export function campaignEnemyToBattleHero(
 }
 
 function mapSkills(template: HeroTemplate): BattleSkill[] {
-  return template.skills.map((skill) => ({
+  const skills =
+    typeof template.skills === 'string'
+      ? JSON.parse(template.skills)
+      : template.skills ?? [];
+  return skills.map((skill: HeroTemplate['skills'][number]) => ({
     id: skill.id,
     name: skill.name,
     damage: skill.damage,

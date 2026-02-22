@@ -12,7 +12,7 @@ const heroTemplates = [
     baseAttack: 150,
     baseDefense: 100,
     baseSpeed: 80,
-    skills: JSON.stringify([
+    skills: [
       {
         id: 'warrior-slash',
         name: 'Power Slash',
@@ -30,7 +30,7 @@ const heroTemplates = [
         target: 'self',
         effect: { type: 'buff', value: 20, duration: 3, stat: 'attack' },
       },
-    ]),
+    ],
     spriteKey: 'hero_warrior',
   },
   {
@@ -42,7 +42,7 @@ const heroTemplates = [
     baseAttack: 200,
     baseDefense: 60,
     baseSpeed: 90,
-    skills: JSON.stringify([
+    skills: [
       {
         id: 'mage-fireball',
         name: 'Fireball',
@@ -59,7 +59,7 @@ const heroTemplates = [
         cooldown: 5,
         target: 'all',
       },
-    ]),
+    ],
     spriteKey: 'hero_mage',
   },
   {
@@ -71,7 +71,7 @@ const heroTemplates = [
     baseAttack: 80,
     baseDefense: 80,
     baseSpeed: 95,
-    skills: JSON.stringify([
+    skills: [
       {
         id: 'healer-heal',
         name: 'Divine Heal',
@@ -90,7 +90,7 @@ const heroTemplates = [
         target: 'ally',
         effect: { type: 'shield', value: 150, duration: 3 },
       },
-    ]),
+    ],
     spriteKey: 'hero_healer',
   },
   {
@@ -102,7 +102,7 @@ const heroTemplates = [
     baseAttack: 180,
     baseDefense: 70,
     baseSpeed: 110,
-    skills: JSON.stringify([
+    skills: [
       {
         id: 'archer-multishot',
         name: 'Multi Shot',
@@ -119,7 +119,7 @@ const heroTemplates = [
         cooldown: 4,
         target: 'single',
       },
-    ]),
+    ],
     spriteKey: 'hero_archer',
   },
   {
@@ -131,7 +131,7 @@ const heroTemplates = [
     baseAttack: 90,
     baseDefense: 180,
     baseSpeed: 50,
-    skills: JSON.stringify([
+    skills: [
       {
         id: 'tank-fortify',
         name: 'Defensive Stance',
@@ -149,7 +149,7 @@ const heroTemplates = [
         cooldown: 3,
         target: 'single',
       },
-    ]),
+    ],
     spriteKey: 'hero_tank',
   },
 ];

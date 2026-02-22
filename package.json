@@ -77,7 +77,7 @@
     "typescript": "~5.7.0"
   },
   "prisma": {
-    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} apps/api/prisma/seed.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
