@@ -73,12 +73,18 @@ export class AuthService {
     return { ...tokens, player: this.sanitizePlayer(player) };
   }
 
-  async refresh(userId: string, refreshToken: string) {
-    const storedToken = await this.redisService.get(`refresh:${userId}`);
+  async refreshByToken(refreshToken: string) {
+    // Look up userId from refresh token
+    const userId = await this.redisService.get(`refresh_lookup:${refreshToken}`);
+    if (!userId) {
+      throw new ForbiddenException('Invalid refresh token');
+    }
 
+    // Verify the stored token matches (rotation check)
+    const storedToken = await this.redisService.get(`refresh:${userId}`);
     if (!storedToken || storedToken !== refreshToken) {
-      // Token rotation detected — possible token theft, invalidate all
       await this.redisService.del(`refresh:${userId}`);
+      await this.redisService.del(`refresh_lookup:${refreshToken}`);
       throw new ForbiddenException('Invalid refresh token');
     }
 
@@ -90,11 +96,18 @@ export class AuthService {
       throw new ForbiddenException('Player not found');
     }
 
+    // Delete old lookup before generating new tokens
+    await this.redisService.del(`refresh_lookup:${refreshToken}`);
+
     const tokens = await this.generateTokens(player.id, player.username);
     return { ...tokens, player: this.sanitizePlayer(player) };
   }
 
   async logout(userId: string) {
+    const refreshToken = await this.redisService.get(`refresh:${userId}`);
+    if (refreshToken) {
+      await this.redisService.del(`refresh_lookup:${refreshToken}`);
+    }
     await this.redisService.del(`refresh:${userId}`);
     return { message: 'Logged out successfully' };
   }
@@ -110,8 +123,9 @@ export class AuthService {
     const refreshToken = uuidv4();
     const refreshTtl = this.configService.get<number>('JWT_REFRESH_TTL', 2592000);
 
-    // Store refresh token in Redis with TTL
+    // Store refresh token in Redis with TTL (both directions for lookup)
     await this.redisService.set(`refresh:${userId}`, refreshToken, refreshTtl);
+    await this.redisService.set(`refresh_lookup:${refreshToken}`, userId, refreshTtl);
 
     return { accessToken, refreshToken };
   }
