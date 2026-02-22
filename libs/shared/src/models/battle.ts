@@ -1,8 +1,10 @@
-import { HeroStats, SkillEffect } from './hero';
+import { HeroClass, HeroStats, SkillEffect } from './hero';
 
 export interface BattleHero {
   id: string;
   name: string;
+  heroClass?: HeroClass;
+  spriteKey?: string;
   stats: HeroStats;
   currentHp: number;
   skills: BattleSkill[];

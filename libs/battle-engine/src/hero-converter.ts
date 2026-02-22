@@ -20,6 +20,8 @@ export function playerHeroToBattleHero(
   return {
     id: playerHero.id,
     name: playerHero.template.name,
+    heroClass: playerHero.template.class,
+    spriteKey: playerHero.template.spriteKey,
     stats,
     currentHp: stats.hp,
     skills: mapSkills(playerHero.template),
@@ -43,6 +45,8 @@ export function campaignEnemyToBattleHero(
   return {
     id: `enemy-${template.id}-${index}`,
     name: template.name,
+    heroClass: template.class,
+    spriteKey: template.spriteKey,
     stats,
     currentHp: stats.hp,
     skills: mapSkills(template),

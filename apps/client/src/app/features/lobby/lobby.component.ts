@@ -35,9 +35,9 @@ import { AuthService } from '../../core/services/auth.service';
             <h3>Heroes</h3>
             <p>Manage your hero collection</p>
           </div>
-          <div class="menu-card disabled">
+          <div class="menu-card" routerLink="/battle/1-1">
             <h3>Battle</h3>
-            <p>Coming in Sprint 3</p>
+            <p>Enter the battlefield</p>
           </div>
           <div class="menu-card disabled">
             <h3>Shop</h3>

@@ -18,12 +18,13 @@
           { "glob": "**/*", "input": "apps/client/public" }
         ],
         "styles": ["apps/client/src/styles.scss"],
-        "scripts": []
+        "scripts": [],
+        "allowedCommonJsDependencies": ["phaser"]
       },
       "configurations": {
         "production": {
           "budgets": [
-            { "type": "initial", "maximumWarning": "500kb", "maximumError": "1mb" },
+            { "type": "initial", "maximumWarning": "2mb", "maximumError": "4mb" },
             { "type": "anyComponentStyle", "maximumWarning": "4kb", "maximumError": "8kb" }
           ],
           "outputHashing": "all"

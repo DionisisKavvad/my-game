@@ -37,6 +37,12 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'battle/:stageId',
+    loadComponent: () =>
+      import('./features/battle/battle.component').then((m) => m.BattleComponent),
+    canActivate: [authGuard],
+  },
+  {
     path: '',
     redirectTo: 'lobby',
     pathMatch: 'full',
