@@ -2,7 +2,7 @@ import {
   IsString,
   IsArray,
   IsNumber,
-  IsEnum,
+  IsIn,
   ValidateNested,
   IsOptional,
   IsObject,
@@ -75,7 +75,7 @@ class BattleLogDto {
   @Type(() => TurnActionDto)
   turns!: TurnActionDto[];
 
-  @IsEnum(['victory', 'defeat', 'timeout'])
+  @IsIn(['victory', 'defeat', 'timeout'])
   result!: string;
 
   @IsNumber()

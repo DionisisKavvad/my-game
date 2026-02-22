@@ -37,6 +37,14 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'campaign',
+    loadComponent: () =>
+      import('./features/campaign/campaign-map.component').then(
+        (m) => m.CampaignMapComponent,
+      ),
+    canActivate: [authGuard],
+  },
+  {
     path: 'battle/:stageId',
     loadComponent: () =>
       import('./features/battle/battle.component').then((m) => m.BattleComponent),

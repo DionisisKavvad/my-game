@@ -26,6 +26,7 @@ model Player {
   battles          Battle[]
   campaignProgress CampaignProgress[]
   dailyQuests      DailyQuest[]
+  heroShards       PlayerHeroShard[]
 
   @@map("players")
 }
@@ -44,6 +45,7 @@ model HeroTemplate {
   createdAt   DateTime @default(now()) @map("created_at")
 
   playerHeroes PlayerHero[]
+  shards       PlayerHeroShard[]
 
   @@map("hero_templates")
 }
@@ -113,4 +115,16 @@ model DailyQuest {
   @@id([playerId, questId])
   @@index([playerId, resetDate])
   @@map("daily_quests")
+}
+
+model PlayerHeroShard {
+  playerId   String @map("player_id")
+  templateId String @map("template_id")
+  count      Int    @default(0)
+
+  player   Player       @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  template HeroTemplate @relation(fields: [templateId], references: [id])
+
+  @@id([playerId, templateId])
+  @@map("player_hero_shards")
 }

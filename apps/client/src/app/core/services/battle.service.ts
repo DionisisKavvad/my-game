@@ -114,7 +114,7 @@ export class BattleService {
     this._lastValidationResult = null;
     const result = await firstValueFrom(
       this.api.post<BattleCompleteResponse>(
-        `/battles/${battleId}/complete`,
+        `/battles/complete`,
         { battleId, clientLog, durationMs },
       ),
     );

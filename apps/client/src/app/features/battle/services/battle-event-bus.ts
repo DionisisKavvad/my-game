@@ -5,6 +5,7 @@ export interface BattleData {
   playerTeam: BattleHero[];
   enemyTeam: BattleHero[];
   battleLog: BattleLog;
+  stageId: string | null;
 }
 
 export class BattleEventBus {

@@ -278,7 +278,7 @@ export class BattleComponent implements OnInit, OnDestroy {
         });
 
       // Set battle data on EventBus for Phaser scenes
-      this.eventBus.setBattleData({ playerTeam, enemyTeam, battleLog });
+      this.eventBus.setBattleData({ playerTeam, enemyTeam, battleLog, stageId });
 
       // Pre-populate the battle log sidebar
       this.recentActions.set(

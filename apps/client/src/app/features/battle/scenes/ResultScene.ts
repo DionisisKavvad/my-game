@@ -154,7 +154,8 @@ export class ResultScene extends Phaser.Scene {
     btn.on('pointerover', () => btn.setStyle({ color: '#ffd700' }));
     btn.on('pointerout', () => btn.setStyle({ color: '#ffffff' }));
     btn.on('pointerdown', () => {
-      eventBus.emitNavigate('lobby');
+      const battleData = eventBus.getBattleData();
+      eventBus.emitNavigate(battleData.stageId ? 'campaign' : 'lobby');
     });
   }
 }

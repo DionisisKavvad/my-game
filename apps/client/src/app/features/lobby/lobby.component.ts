@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { CampaignService } from '../../core/services/campaign.service';
 
 @Component({
   selector: 'app-lobby',
@@ -27,9 +28,10 @@ import { AuthService } from '../../core/services/auth.service';
 
       <main class="lobby-content">
         <div class="menu-grid">
-          <div class="menu-card disabled">
+          <div class="menu-card" routerLink="/campaign">
             <h3>Campaign</h3>
-            <p>Coming in Sprint 2</p>
+            <p>Conquer the world stage by stage</p>
+            <span class="campaign-progress">{{ completedStages() }}/30</span>
           </div>
           <div class="menu-card" routerLink="/heroes">
             <h3>Heroes</h3>
@@ -139,8 +141,26 @@ import { AuthService } from '../../core/services/auth.service';
       color: #888;
       font-size: 0.875rem;
     }
+    .campaign-progress {
+      display: block;
+      margin-top: 0.5rem;
+      color: #7fff00;
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
   `],
 })
-export class LobbyComponent {
-  constructor(public authService: AuthService) {}
+export class LobbyComponent implements OnInit {
+  readonly completedStages = computed(() => {
+    return this.campaignService.stages().filter((s) => s.completed).length;
+  });
+
+  constructor(
+    public authService: AuthService,
+    private campaignService: CampaignService,
+  ) {}
+
+  ngOnInit(): void {
+    this.campaignService.loadStages().subscribe();
+  }
 }

@@ -21,6 +21,19 @@ export interface StageRewards {
   heroShards?: { templateId: string; count: number };
 }
 
+export interface CampaignStageResponse extends CampaignStage {
+  stars: number;
+  completed: boolean;
+  unlocked: boolean;
+}
+
+export interface HeroShardProgress {
+  templateId: string;
+  templateName: string;
+  count: number;
+  requiredToUnlock: number;
+}
+
 export interface CampaignProgress {
   playerId: string;
   stageId: string;
