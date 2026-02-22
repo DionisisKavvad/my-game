@@ -1,3 +1,4 @@
+import Phaser from 'phaser';
 import { BattleHero, BattleLog, TurnAction } from '@hero-wars/shared';
 import { HeroSprite } from '../objects/HeroSprite';
 import { SkillEffectFactory } from '../objects/SkillEffectFactory';

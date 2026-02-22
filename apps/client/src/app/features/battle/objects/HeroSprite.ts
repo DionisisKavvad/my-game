@@ -1,3 +1,4 @@
+import Phaser from 'phaser';
 import { BattleHero, StatusEffect } from '@hero-wars/shared';
 
 export class HeroSprite extends Phaser.GameObjects.Container {

@@ -1,3 +1,5 @@
+import Phaser from 'phaser';
+
 export class SkillEffectFactory {
   constructor(private scene: Phaser.Scene) {}
 

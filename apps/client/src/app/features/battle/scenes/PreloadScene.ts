@@ -1,3 +1,4 @@
+import Phaser from 'phaser';
 import { BattleEventBus } from '../services/battle-event-bus';
 
 export class PreloadScene extends Phaser.Scene {

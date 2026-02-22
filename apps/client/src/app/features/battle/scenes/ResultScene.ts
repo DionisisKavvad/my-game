@@ -1,3 +1,4 @@
+import Phaser from 'phaser';
 import { BattleCompleteResponse } from '@hero-wars/shared';
 import { BattleEventBus } from '../services/battle-event-bus';
 import { BattleService } from '../../../core/services/battle.service';

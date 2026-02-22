@@ -1,6 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, tap, catchError, throwError, BehaviorSubject, switchMap, filter, take } from 'rxjs';
+import { Observable, tap, catchError, throwError, BehaviorSubject, switchMap, filter, take, firstValueFrom } from 'rxjs';
 import { ApiService } from './api.service';
 
 interface AuthResponse {
@@ -30,14 +30,21 @@ export class AuthService {
   readonly player = signal<PlayerData | null>(null);
   readonly isAuthenticated = computed(() => !!this.player() && !!this.getToken());
 
+  private _authReady: Promise<void>;
+
   constructor(
     private api: ApiService,
     private router: Router,
   ) {
-    // Restore player data if token exists
     if (this.getToken()) {
-      this.loadProfile();
+      this._authReady = this.restoreSession();
+    } else {
+      this._authReady = Promise.resolve();
     }
+  }
+
+  get authReady(): Promise<void> {
+    return this._authReady;
   }
 
   register(username: string, email: string, password: string): Observable<AuthResponse> {
@@ -76,6 +83,7 @@ export class AuthService {
       tap((res) => {
         this.isRefreshing = false;
         this.storeAccessToken(res.accessToken);
+        this.player.set(res.player);
         this.refreshTokenSubject.next(res.accessToken);
       }),
       catchError((err) => {
@@ -103,10 +111,12 @@ export class AuthService {
     localStorage.removeItem(this.TOKEN_KEY);
   }
 
-  private loadProfile(): void {
-    this.api.get<PlayerData>('/players/me').subscribe({
-      next: (player) => this.player.set(player),
-      error: () => this.clearTokens(),
-    });
+  private async restoreSession(): Promise<void> {
+    try {
+      const player = await firstValueFrom(this.api.get<PlayerData>('/players/me'));
+      this.player.set(player);
+    } catch {
+      this.clearTokens();
+    }
   }
 }
