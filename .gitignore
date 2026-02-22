@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build
+dist/
+tmp/
+out-tsc/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+
+# Nx
+.nx/cache
+.nx/workspace-data
+
+# Angular
+.angular/
+
+# Prisma
+apps/api/prisma/migrations/
+
+# Docker
+docker-compose.override.yml
+
+# Test
+coverage/

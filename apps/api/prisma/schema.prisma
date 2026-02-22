@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Player {
+  id           String    @id @default(uuid())
+  username     String    @unique
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  level        Int       @default(1)
+  xp           Int       @default(0)
+  gold         Int       @default(500)
+  gems         Int       @default(100)
+  energy       Int       @default(120)
+  maxEnergy    Int       @default(120) @map("max_energy")
+  energyRegenAt DateTime? @map("energy_regen_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  heroes           PlayerHero[]
+  battles          Battle[]
+  campaignProgress CampaignProgress[]
+  dailyQuests      DailyQuest[]
+
+  @@map("players")
+}
+
+model HeroTemplate {
+  id          String @id @default(uuid())
+  name        String @unique
+  class       String
+  rarity      String
+  baseHp      Int    @map("base_hp")
+  baseAttack  Int    @map("base_attack")
+  baseDefense Int    @map("base_defense")
+  baseSpeed   Int    @map("base_speed")
+  skills      Json   @default("[]")
+  spriteKey   String @map("sprite_key")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  playerHeroes PlayerHero[]
+
+  @@map("hero_templates")
+}
+
+model PlayerHero {
+  id           String  @id @default(uuid())
+  playerId     String  @map("player_id")
+  templateId   String  @map("template_id")
+  level        Int     @default(1)
+  stars        Int     @default(1)
+  xp           Int     @default(0)
+  equipment    Json    @default("{}")
+  isInTeam     Boolean @default(false) @map("is_in_team")
+  teamPosition Int?    @map("team_position")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  player   Player       @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  template HeroTemplate @relation(fields: [templateId], references: [id])
+
+  @@map("player_heroes")
+}
+
+model Battle {
+  id         String   @id @default(uuid())
+  playerId   String   @map("player_id")
+  stageId    String?  @map("stage_id")
+  rngSeed    Int      @map("rng_seed")
+  result     String
+  battleLog  Json     @map("battle_log")
+  validated  Boolean  @default(false)
+  rewardGold Int      @default(0) @map("reward_gold")
+  rewardXp   Int      @default(0) @map("reward_xp")
+  durationMs Int      @default(0) @map("duration_ms")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("battles")
+}
+
+model CampaignProgress {
+  playerId    String   @map("player_id")
+  stageId     String   @map("stage_id")
+  stars       Int      @default(0)
+  bestTimeMs  Int      @default(0) @map("best_time_ms")
+  completedAt DateTime @default(now()) @map("completed_at")
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@id([playerId, stageId])
+  @@map("campaign_progress")
+}
+
+model DailyQuest {
+  playerId  String   @map("player_id")
+  questId   String   @map("quest_id")
+  progress  Int      @default(0)
+  completed Boolean  @default(false)
+  claimed   Boolean  @default(false)
+  resetDate DateTime @map("reset_date")
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@id([playerId, questId])
+  @@map("daily_quests")
+}
