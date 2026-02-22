@@ -9,13 +9,7 @@
       "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
       "options": {
-        "target": "node",
-        "compiler": "tsc",
         "outputPath": "dist/apps/api",
-        "main": "apps/api/src/main.ts",
-        "tsConfig": "apps/api/tsconfig.app.json",
-        "assets": ["apps/api/src/assets"],
-        "generatePackageJson": true,
         "webpackConfig": "apps/api/webpack.config.js"
       },
       "configurations": {
@@ -24,17 +18,22 @@
       }
     },
     "serve": {
-      "executor": "@nx/js:node",
+      "executor": "nx:run-commands",
       "defaultConfiguration": "development",
       "options": {
-        "buildTarget": "api:build"
+        "commands": [
+          "nx build api --configuration=development --watch",
+          "while [ ! -f dist/apps/api/main.js ]; do sleep 1; done && node --watch-path=dist/apps/api dist/apps/api/main.js"
+        ],
+        "parallel": true
       },
       "configurations": {
-        "development": {
-          "buildTarget": "api:build:development"
-        },
+        "development": {},
         "production": {
-          "buildTarget": "api:build:production"
+          "commands": [
+            "nx build api --configuration=production && node dist/apps/api/main.js"
+          ],
+          "parallel": false
         }
       }
     },
