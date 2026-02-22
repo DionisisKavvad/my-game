@@ -23,8 +23,12 @@ export interface DamageResult {
 export function calculateDamage(input: DamageInput): DamageResult {
   const { attackerAttack, defenderDefense, skillDamage, rng } = input;
 
-  // Check dodge first
+  // Always consume all 3 RNG values regardless of dodge outcome to guarantee
+  // deterministic RNG state across all execution paths (B1 blocker fix)
   const isDodged = rng.chance(GAME_CONFIG.battle.dodgeChance);
+  const isCrit = rng.chance(GAME_CONFIG.battle.critChance);
+  const variance = 0.9 + rng.next() * 0.2;
+
   if (isDodged) {
     return { damage: 0, isCrit: false, isDodged: true };
   }
@@ -35,14 +39,10 @@ export function calculateDamage(input: DamageInput): DamageResult {
   // Ensure minimum damage
   baseDamage = Math.max(baseDamage, GAME_CONFIG.battle.minDamage);
 
-  // Crit check
-  const isCrit = rng.chance(GAME_CONFIG.battle.critChance);
   if (isCrit) {
     baseDamage = Math.floor(baseDamage * GAME_CONFIG.battle.critMultiplier);
   }
 
-  // Add slight variance (+-10%)
-  const variance = 0.9 + rng.next() * 0.2;
   const finalDamage = Math.max(Math.floor(baseDamage * variance), GAME_CONFIG.battle.minDamage);
 
   return { damage: finalDamage, isCrit, isDodged: false };

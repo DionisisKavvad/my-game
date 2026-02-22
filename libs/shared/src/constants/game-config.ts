@@ -30,11 +30,20 @@ export const GAME_CONFIG = {
     critMultiplier: 1.5,
     dodgeChance: 0.05,
     minDamage: 1,
+    aoeDamageMultiplier: 0.7,
+    healerHpThreshold: 0.4,
+    aiRandomTargetChance: 0.1,
   },
 
   campaign: {
     energyCostPerStage: 6,
     maxStarsPerStage: 3,
+  },
+
+  rewards: {
+    heroXpPerBattle: 25,
+    victoryStar3Threshold: 1.0,
+    victoryStar2Threshold: 0.5,
   },
 
   xp: {

@@ -1,12 +1,25 @@
 import { createHash, randomInt } from 'crypto';
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
-import { GAME_CONFIG } from '@hero-wars/shared';
+import {
+  GAME_CONFIG,
+  BattleHero,
+  BattleLog,
+  BattleValidationResult,
+  calculateHeroStats,
+  getStage,
+} from '@hero-wars/shared';
+import {
+  BattleSimulator,
+  playerHeroToBattleHero,
+  campaignEnemyToBattleHero,
+} from '@hero-wars/battle-engine';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { StructuredLogger } from '../common/logger/structured-logger';
@@ -31,7 +44,16 @@ export class BattlesService {
       throw new ConflictException('A battle is already in progress');
     }
 
-    // Check energy if this is a campaign stage
+    // Validate stage exists
+    let stage;
+    if (stageId) {
+      stage = getStage(stageId);
+      if (!stage) {
+        throw new NotFoundException(`Stage ${stageId} not found`);
+      }
+    }
+
+    // Check and deduct energy if this is a campaign stage (B5 blocker fix)
     if (stageId) {
       const player = await this.prisma.player.findUnique({
         where: { id: playerId },
@@ -40,9 +62,92 @@ export class BattlesService {
       if (!player) {
         throw new NotFoundException('Player not found');
       }
-      if (player.energy < GAME_CONFIG.campaign.energyCostPerStage) {
+      const energyCost = stage?.energyCost ?? GAME_CONFIG.campaign.energyCostPerStage;
+      if (player.energy < energyCost) {
         throw new ConflictException('Not enough energy');
       }
+      await this.prisma.player.update({
+        where: { id: playerId },
+        data: { energy: { decrement: energyCost } },
+      });
+    }
+
+    // Validate campaign progression
+    if (stageId && stage) {
+      await this.validateStageUnlocked(playerId, stageId);
+    }
+
+    // Load player's team from DB (R7: use PrismaService directly)
+    const playerHeroes = await this.prisma.playerHero.findMany({
+      where: { playerId, isInTeam: true },
+      include: { template: true },
+      orderBy: { teamPosition: 'asc' },
+    });
+
+    if (playerHeroes.length === 0) {
+      throw new ConflictException('No heroes in team. Set up your team first.');
+    }
+
+    // Convert player heroes to BattleHero[]
+    const playerTeam: BattleHero[] = playerHeroes.map((ph) => {
+      const template = {
+        id: ph.template.id,
+        name: ph.template.name,
+        class: ph.template.class as 'warrior' | 'mage' | 'healer' | 'archer' | 'tank',
+        rarity: ph.template.rarity as 'common' | 'rare' | 'epic' | 'legendary',
+        baseHp: ph.template.baseHp,
+        baseAttack: ph.template.baseAttack,
+        baseDefense: ph.template.baseDefense,
+        baseSpeed: ph.template.baseSpeed,
+        skills: ph.template.skills as unknown as import('@hero-wars/shared').HeroSkill[],
+        spriteKey: ph.template.spriteKey,
+      };
+      return playerHeroToBattleHero(
+        {
+          id: ph.id,
+          playerId: ph.playerId,
+          templateId: ph.templateId,
+          template,
+          level: ph.level,
+          stars: ph.stars,
+          xp: ph.xp,
+          equipment: ph.equipment as Record<string, string>,
+          isInTeam: ph.isInTeam,
+          teamPosition: ph.teamPosition,
+        },
+        'player',
+      );
+    });
+
+    // Build enemy team from campaign stage or default
+    let enemyTeam: BattleHero[] = [];
+    if (stage) {
+      // Load hero templates for enemies
+      const templateIds = [...new Set(stage.enemyTeam.map((e) => e.templateId))];
+      const templates = await this.prisma.heroTemplate.findMany({
+        where: { id: { in: templateIds } },
+      });
+      const templateMap = new Map(templates.map((t) => [t.id, t]));
+
+      enemyTeam = stage.enemyTeam.map((enemy, index) => {
+        const t = templateMap.get(enemy.templateId);
+        if (!t) {
+          throw new NotFoundException(`Enemy template ${enemy.templateId} not found`);
+        }
+        const template = {
+          id: t.id,
+          name: t.name,
+          class: t.class as 'warrior' | 'mage' | 'healer' | 'archer' | 'tank',
+          rarity: t.rarity as 'common' | 'rare' | 'epic' | 'legendary',
+          baseHp: t.baseHp,
+          baseAttack: t.baseAttack,
+          baseDefense: t.baseDefense,
+          baseSpeed: t.baseSpeed,
+          skills: t.skills as unknown as import('@hero-wars/shared').HeroSkill[],
+          spriteKey: t.spriteKey,
+        };
+        return campaignEnemyToBattleHero(enemy, template, index);
+      });
     }
 
     // Generate seed (32-bit positive int) using crypto.randomInt for security
@@ -66,7 +171,7 @@ export class BattlesService {
       BATTLE_TTL_SECONDS,
     );
 
-    // Create battle record with pending result
+    // Create battle record with initial state stored for re-simulation
     await this.prisma.battle.create({
       data: {
         id: battleId,
@@ -74,7 +179,12 @@ export class BattlesService {
         stageId: stageId ?? null,
         rngSeed: seed,
         result: 'pending',
-        battleLog: {},
+        battleLog: {
+          initialState: {
+            playerTeam,
+            enemyTeam,
+          },
+        } as unknown as Prisma.InputJsonValue,
       },
     });
 
@@ -86,14 +196,16 @@ export class BattlesService {
 
     return {
       battleId,
+      seed,
       seedHash,
+      enemyTeam,
     };
   }
 
   async completeBattle(
     playerId: string,
     battleId: string,
-    clientLog: Record<string, unknown>,
+    clientLog: BattleLog,
   ) {
     // Retrieve the actual seed from Redis
     const seedStr = await this.redis.get(`${BATTLE_SEED_PREFIX}${battleId}`);
@@ -102,43 +214,93 @@ export class BattlesService {
     }
     const seed = parseInt(seedStr, 10);
 
-    // TODO: Server-side re-simulation with BattleSimulator using actual seed
-    // For now, accept the client log and mark as validated=false
+    // Load battle record from DB
+    const battle = await this.prisma.battle.findUnique({ where: { id: battleId } });
+    if (!battle || battle.playerId !== playerId) {
+      throw new NotFoundException('Battle not found');
+    }
+    if (battle.result !== 'pending') {
+      throw new ConflictException('Battle already completed');
+    }
 
-    const serverResult = (clientLog['result'] as string) ?? 'defeat';
-    const validResults = ['victory', 'defeat', 'timeout'];
-    const result = validResults.includes(serverResult) ? serverResult : 'defeat';
+    // Reconstruct teams from stored initial state
+    const battleData = battle.battleLog as unknown as {
+      initialState: { playerTeam: BattleHero[]; enemyTeam: BattleHero[] };
+    };
+    const { playerTeam, enemyTeam } = battleData.initialState;
 
-    const rewardGold = result === 'victory' ? GAME_CONFIG.player.startingGold : 0;
-    const rewardXp = result === 'victory' ? 50 : 10;
-    const durationMs = typeof clientLog['durationMs'] === 'number'
-      ? clientLog['durationMs']
-      : 0;
+    // Server-side re-simulation
+    const simulator = new BattleSimulator({
+      playerTeam,
+      enemyTeam,
+      seed,
+    });
+    const serverLog = simulator.run();
+
+    // Compare server log vs client log (R6: exclude durationMs)
+    const validation = compareBattleLogs(serverLog, clientLog);
+
+    const result = serverLog.result;
+    const validated = validation.valid;
+
+    // Calculate rewards
+    let rewardGold = 0;
+    let rewardXp = 0;
+    let heroXp = 0;
+    let starsEarned = 0;
+
+    if (validated && result === 'victory' && battle.stageId) {
+      const stage = getStage(battle.stageId);
+      if (stage) {
+        rewardGold = stage.rewards.gold;
+        rewardXp = stage.rewards.xp;
+        heroXp = GAME_CONFIG.rewards.heroXpPerBattle;
+
+        // Calculate stars based on surviving heroes
+        const alivePlayerCount = Object.entries(serverLog.turns[serverLog.turns.length - 1]?.resultHp ?? {})
+          .filter(([id]) => playerTeam.some((h) => h.id === id))
+          .filter(([, hp]) => hp > 0).length;
+        const totalPlayers = playerTeam.length;
+        const survivalRatio = totalPlayers > 0 ? alivePlayerCount / totalPlayers : 0;
+
+        if (survivalRatio >= GAME_CONFIG.rewards.victoryStar3Threshold) {
+          starsEarned = 3;
+        } else if (survivalRatio >= GAME_CONFIG.rewards.victoryStar2Threshold) {
+          starsEarned = 2;
+        } else {
+          starsEarned = 1;
+        }
+      }
+    } else if (validated && result === 'victory') {
+      // Non-campaign battle
+      rewardGold = GAME_CONFIG.player.startingGold;
+      rewardXp = 50;
+    }
 
     // Atomic transaction: validate battle + grant rewards
-    const updatedBattle = await this.prisma.$transaction(async (tx) => {
-      const battle = await tx.battle.findUnique({ where: { id: battleId } });
-      if (!battle || battle.playerId !== playerId) {
-        throw new NotFoundException('Battle not found');
-      }
-      if (battle.result !== 'pending') {
-        throw new ConflictException('Battle already completed');
-      }
-
-      const updated = await tx.battle.update({
+    await this.prisma.$transaction(async (tx) => {
+      await tx.battle.update({
         where: { id: battleId },
         data: {
           result,
-          battleLog: clientLog as unknown as Prisma.InputJsonValue,
-          validated: false,
-          durationMs,
+          battleLog: {
+            initialState: battleData.initialState,
+            clientLog: clientLog as unknown as Prisma.InputJsonValue,
+            serverLog: serverLog as unknown as Prisma.InputJsonValue,
+            validated,
+            mismatchDetails: validation.valid
+              ? undefined
+              : { turn: validation.mismatchTurn, reason: validation.reason },
+          } as unknown as Prisma.InputJsonValue,
+          validated,
+          durationMs: clientLog.durationMs ?? 0,
           rewardGold,
           rewardXp,
         },
       });
 
-      // Grant rewards atomically within the same transaction
-      if (result === 'victory') {
+      // Grant rewards on validated victory
+      if (validated && result === 'victory') {
         await tx.player.update({
           where: { id: playerId },
           data: {
@@ -146,9 +308,34 @@ export class BattlesService {
             xp: { increment: rewardXp },
           },
         });
-      }
 
-      return updated;
+        // Grant hero XP to all team members
+        if (heroXp > 0) {
+          const heroIds = playerTeam.map((h) => h.id);
+          await tx.playerHero.updateMany({
+            where: { id: { in: heroIds } },
+            data: { xp: { increment: heroXp } },
+          });
+        }
+
+        // Update campaign progress
+        if (battle.stageId && starsEarned > 0) {
+          await tx.campaignProgress.upsert({
+            where: {
+              playerId_stageId: { playerId, stageId: battle.stageId },
+            },
+            create: {
+              playerId,
+              stageId: battle.stageId,
+              stars: starsEarned,
+            },
+            update: {
+              stars: { set: starsEarned },
+              completedAt: new Date(),
+            },
+          });
+        }
+      }
     });
 
     // Clean up Redis keys after successful transaction
@@ -159,17 +346,156 @@ export class BattlesService {
       battleId,
       playerId,
       result,
+      validated,
       rewardGold,
       rewardXp,
     });
 
     return {
       seed,
-      result: updatedBattle.result,
+      result,
+      validated,
       rewards: {
-        gold: updatedBattle.rewardGold,
-        xp: updatedBattle.rewardXp,
+        gold: rewardGold,
+        xp: rewardXp,
+        heroXp,
       },
+      starsEarned,
     };
   }
+
+  private async validateStageUnlocked(
+    playerId: string,
+    stageId: string,
+  ): Promise<void> {
+    // Stage 1-1 is always unlocked
+    if (stageId === '1-1') return;
+
+    // Parse chapter and stage from ID (format: "chapter-stage")
+    const [chapterStr, stageStr] = stageId.split('-');
+    const chapter = parseInt(chapterStr, 10);
+    const stageNum = parseInt(stageStr, 10);
+
+    // Determine the previous stage ID
+    let prevStageId: string;
+    if (stageNum === 1) {
+      // First stage of a chapter -- previous is last stage of previous chapter
+      prevStageId = `${chapter - 1}-3`;
+    } else {
+      prevStageId = `${chapter}-${stageNum - 1}`;
+    }
+
+    const progress = await this.prisma.campaignProgress.findUnique({
+      where: {
+        playerId_stageId: { playerId, stageId: prevStageId },
+      },
+    });
+
+    if (!progress || progress.stars <= 0) {
+      throw new ForbiddenException(
+        `Stage ${stageId} is locked. Complete stage ${prevStageId} first.`,
+      );
+    }
+  }
+}
+
+/**
+ * Compares server-generated battle log with client-submitted log.
+ * R6: Excludes durationMs from comparison.
+ */
+function compareBattleLogs(
+  serverLog: BattleLog,
+  clientLog: BattleLog,
+): BattleValidationResult {
+  if (serverLog.result !== clientLog.result) {
+    return {
+      valid: false,
+      mismatchTurn: 0,
+      reason: `Result mismatch: server=${serverLog.result}, client=${clientLog.result}`,
+    };
+  }
+
+  if (serverLog.totalTurns !== clientLog.totalTurns) {
+    return {
+      valid: false,
+      mismatchTurn: 0,
+      reason: `Total turns mismatch: server=${serverLog.totalTurns}, client=${clientLog.totalTurns}`,
+    };
+  }
+
+  if (serverLog.turns.length !== clientLog.turns.length) {
+    return {
+      valid: false,
+      mismatchTurn: 0,
+      reason: `Turn count mismatch: server=${serverLog.turns.length}, client=${clientLog.turns.length}`,
+    };
+  }
+
+  for (let i = 0; i < serverLog.turns.length; i++) {
+    const st = serverLog.turns[i];
+    const ct = clientLog.turns[i];
+
+    if (st.actorId !== ct.actorId) {
+      return {
+        valid: false,
+        mismatchTurn: st.turn,
+        reason: `Turn ${i}: actorId mismatch: server=${st.actorId}, client=${ct.actorId}`,
+      };
+    }
+
+    if (st.skillId !== ct.skillId) {
+      return {
+        valid: false,
+        mismatchTurn: st.turn,
+        reason: `Turn ${i}: skillId mismatch: server=${st.skillId}, client=${ct.skillId}`,
+      };
+    }
+
+    if (JSON.stringify(st.targetIds.sort()) !== JSON.stringify(ct.targetIds.sort())) {
+      return {
+        valid: false,
+        mismatchTurn: st.turn,
+        reason: `Turn ${i}: targetIds mismatch`,
+      };
+    }
+
+    if (st.damage !== ct.damage) {
+      return {
+        valid: false,
+        mismatchTurn: st.turn,
+        reason: `Turn ${i}: damage mismatch: server=${st.damage}, client=${ct.damage}`,
+      };
+    }
+
+    if (st.healing !== ct.healing) {
+      return {
+        valid: false,
+        mismatchTurn: st.turn,
+        reason: `Turn ${i}: healing mismatch: server=${st.healing}, client=${ct.healing}`,
+      };
+    }
+
+    // Compare resultHp snapshot
+    const serverHpKeys = Object.keys(st.resultHp).sort();
+    const clientHpKeys = Object.keys(ct.resultHp).sort();
+    if (JSON.stringify(serverHpKeys) !== JSON.stringify(clientHpKeys)) {
+      return {
+        valid: false,
+        mismatchTurn: st.turn,
+        reason: `Turn ${i}: resultHp keys mismatch`,
+      };
+    }
+
+    for (const key of serverHpKeys) {
+      if (st.resultHp[key] !== ct.resultHp[key]) {
+        return {
+          valid: false,
+          mismatchTurn: st.turn,
+          reason: `Turn ${i}: resultHp[${key}] mismatch: server=${st.resultHp[key]}, client=${ct.resultHp[key]}`,
+        };
+      }
+    }
+  }
+
+  return { valid: true };
 }

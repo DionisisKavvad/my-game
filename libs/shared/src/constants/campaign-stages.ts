@@ -1,0 +1,456 @@
+import { CampaignStage } from '../models/campaign';
+
+export const CAMPAIGN_STAGES: CampaignStage[] = [
+  // Chapter 1: Forest Outskirts (2 enemies, levels 1-3, 1 star)
+  {
+    id: '1-1',
+    chapter: 1,
+    stage: 1,
+    name: 'Forest Outskirts',
+    difficulty: 1,
+    energyCost: 6,
+    enemyTeam: [
+      { templateId: 'warrior_bold', level: 1, stars: 1 },
+      { templateId: 'archer_swift', level: 1, stars: 1 },
+    ],
+    rewards: { gold: 100, xp: 50 },
+  },
+  {
+    id: '1-2',
+    chapter: 1,
+    stage: 2,
+    name: 'Darkwood Path',
+    difficulty: 2,
+    energyCost: 6,
+    enemyTeam: [
+      { templateId: 'warrior_bold', level: 2, stars: 1 },
+      { templateId: 'mage_fire', level: 2, stars: 1 },
+    ],
+    rewards: { gold: 120, xp: 60 },
+  },
+  {
+    id: '1-3',
+    chapter: 1,
+    stage: 3,
+    name: 'Goblin Camp',
+    difficulty: 3,
+    energyCost: 6,
+    enemyTeam: [
+      { templateId: 'archer_swift', level: 3, stars: 1 },
+      { templateId: 'tank_iron', level: 3, stars: 1 },
+    ],
+    rewards: { gold: 140, xp: 70 },
+  },
+
+  // Chapter 2: Mountain Pass (2 enemies, levels 4-6, 1 star)
+  {
+    id: '2-1',
+    chapter: 2,
+    stage: 1,
+    name: 'Rocky Ascent',
+    difficulty: 4,
+    energyCost: 6,
+    enemyTeam: [
+      { templateId: 'tank_iron', level: 4, stars: 1 },
+      { templateId: 'warrior_bold', level: 4, stars: 1 },
+    ],
+    rewards: { gold: 160, xp: 80 },
+  },
+  {
+    id: '2-2',
+    chapter: 2,
+    stage: 2,
+    name: 'Eagle\'s Perch',
+    difficulty: 5,
+    energyCost: 6,
+    enemyTeam: [
+      { templateId: 'archer_swift', level: 5, stars: 1 },
+      { templateId: 'mage_fire', level: 5, stars: 1 },
+    ],
+    rewards: { gold: 180, xp: 90 },
+  },
+  {
+    id: '2-3',
+    chapter: 2,
+    stage: 3,
+    name: 'Bandit Hideout',
+    difficulty: 6,
+    energyCost: 6,
+    enemyTeam: [
+      { templateId: 'warrior_bold', level: 6, stars: 1 },
+      { templateId: 'healer_light', level: 6, stars: 1 },
+    ],
+    rewards: { gold: 200, xp: 100, heroShards: { templateId: 'warrior_bold', count: 3 } },
+  },
+
+  // Chapter 3: Cursed Swamp (2 enemies, levels 7-10, 1 star)
+  {
+    id: '3-1',
+    chapter: 3,
+    stage: 1,
+    name: 'Murky Shallows',
+    difficulty: 7,
+    energyCost: 6,
+    enemyTeam: [
+      { templateId: 'mage_fire', level: 7, stars: 1 },
+      { templateId: 'healer_light', level: 7, stars: 1 },
+    ],
+    rewards: { gold: 220, xp: 110 },
+  },
+  {
+    id: '3-2',
+    chapter: 3,
+    stage: 2,
+    name: 'Witch\'s Hut',
+    difficulty: 8,
+    energyCost: 6,
+    enemyTeam: [
+      { templateId: 'mage_fire', level: 8, stars: 1 },
+      { templateId: 'tank_iron', level: 8, stars: 1 },
+    ],
+    rewards: { gold: 240, xp: 120 },
+  },
+  {
+    id: '3-3',
+    chapter: 3,
+    stage: 3,
+    name: 'Hydra\'s Den',
+    difficulty: 10,
+    energyCost: 6,
+    enemyTeam: [
+      { templateId: 'tank_iron', level: 10, stars: 1 },
+      { templateId: 'warrior_bold', level: 10, stars: 1 },
+    ],
+    rewards: { gold: 260, xp: 130 },
+  },
+
+  // Chapter 4: Desert Expanse (3 enemies, levels 10-15, 1-2 stars)
+  {
+    id: '4-1',
+    chapter: 4,
+    stage: 1,
+    name: 'Sand Dunes',
+    difficulty: 11,
+    energyCost: 8,
+    enemyTeam: [
+      { templateId: 'warrior_bold', level: 10, stars: 1 },
+      { templateId: 'archer_swift', level: 11, stars: 1 },
+      { templateId: 'mage_fire', level: 10, stars: 1 },
+    ],
+    rewards: { gold: 300, xp: 150 },
+  },
+  {
+    id: '4-2',
+    chapter: 4,
+    stage: 2,
+    name: 'Oasis Ambush',
+    difficulty: 12,
+    energyCost: 8,
+    enemyTeam: [
+      { templateId: 'tank_iron', level: 12, stars: 1 },
+      { templateId: 'healer_light', level: 11, stars: 1 },
+      { templateId: 'archer_swift', level: 12, stars: 1 },
+    ],
+    rewards: { gold: 330, xp: 165 },
+  },
+  {
+    id: '4-3',
+    chapter: 4,
+    stage: 3,
+    name: 'Scorpion Pit',
+    difficulty: 14,
+    energyCost: 8,
+    enemyTeam: [
+      { templateId: 'warrior_bold', level: 13, stars: 2 },
+      { templateId: 'mage_fire', level: 14, stars: 1 },
+      { templateId: 'tank_iron', level: 13, stars: 1 },
+    ],
+    rewards: { gold: 360, xp: 180, heroShards: { templateId: 'mage_fire', count: 3 } },
+  },
+
+  // Chapter 5: Frozen Peaks (3 enemies, levels 15-20, 1-2 stars)
+  {
+    id: '5-1',
+    chapter: 5,
+    stage: 1,
+    name: 'Frost Gate',
+    difficulty: 15,
+    energyCost: 8,
+    enemyTeam: [
+      { templateId: 'mage_fire', level: 15, stars: 1 },
+      { templateId: 'warrior_bold', level: 16, stars: 1 },
+      { templateId: 'healer_light', level: 15, stars: 2 },
+    ],
+    rewards: { gold: 400, xp: 200 },
+  },
+  {
+    id: '5-2',
+    chapter: 5,
+    stage: 2,
+    name: 'Ice Caverns',
+    difficulty: 17,
+    energyCost: 8,
+    enemyTeam: [
+      { templateId: 'archer_swift', level: 17, stars: 2 },
+      { templateId: 'tank_iron', level: 17, stars: 1 },
+      { templateId: 'mage_fire', level: 18, stars: 1 },
+    ],
+    rewards: { gold: 440, xp: 220 },
+  },
+  {
+    id: '5-3',
+    chapter: 5,
+    stage: 3,
+    name: 'Yeti\'s Lair',
+    difficulty: 20,
+    energyCost: 8,
+    enemyTeam: [
+      { templateId: 'tank_iron', level: 20, stars: 2 },
+      { templateId: 'warrior_bold', level: 19, stars: 2 },
+      { templateId: 'healer_light', level: 18, stars: 1 },
+    ],
+    rewards: { gold: 480, xp: 240, heroShards: { templateId: 'healer_light', count: 3 } },
+  },
+
+  // Chapter 6: Volcanic Wastes (3 enemies, levels 20-25, 2 stars)
+  {
+    id: '6-1',
+    chapter: 6,
+    stage: 1,
+    name: 'Lava Fields',
+    difficulty: 21,
+    energyCost: 8,
+    enemyTeam: [
+      { templateId: 'mage_fire', level: 21, stars: 2 },
+      { templateId: 'archer_swift', level: 20, stars: 2 },
+      { templateId: 'warrior_bold', level: 22, stars: 2 },
+    ],
+    rewards: { gold: 520, xp: 260 },
+  },
+  {
+    id: '6-2',
+    chapter: 6,
+    stage: 2,
+    name: 'Obsidian Bridge',
+    difficulty: 23,
+    energyCost: 8,
+    enemyTeam: [
+      { templateId: 'tank_iron', level: 23, stars: 2 },
+      { templateId: 'healer_light', level: 22, stars: 2 },
+      { templateId: 'mage_fire', level: 23, stars: 2 },
+    ],
+    rewards: { gold: 560, xp: 280 },
+  },
+  {
+    id: '6-3',
+    chapter: 6,
+    stage: 3,
+    name: 'Dragon\'s Forge',
+    difficulty: 25,
+    energyCost: 8,
+    enemyTeam: [
+      { templateId: 'warrior_bold', level: 25, stars: 2 },
+      { templateId: 'archer_swift', level: 24, stars: 2 },
+      { templateId: 'tank_iron', level: 25, stars: 2 },
+    ],
+    rewards: { gold: 600, xp: 300, heroShards: { templateId: 'archer_swift', count: 5 } },
+  },
+
+  // Chapter 7: Shadow Realm (4 enemies, levels 25-33, 2-3 stars)
+  {
+    id: '7-1',
+    chapter: 7,
+    stage: 1,
+    name: 'Twilight Gate',
+    difficulty: 27,
+    energyCost: 10,
+    enemyTeam: [
+      { templateId: 'warrior_bold', level: 25, stars: 2 },
+      { templateId: 'mage_fire', level: 26, stars: 2 },
+      { templateId: 'archer_swift', level: 25, stars: 2 },
+      { templateId: 'healer_light', level: 27, stars: 2 },
+    ],
+    rewards: { gold: 650, xp: 325 },
+  },
+  {
+    id: '7-2',
+    chapter: 7,
+    stage: 2,
+    name: 'Phantom Woods',
+    difficulty: 30,
+    energyCost: 10,
+    enemyTeam: [
+      { templateId: 'tank_iron', level: 29, stars: 2 },
+      { templateId: 'mage_fire', level: 30, stars: 2 },
+      { templateId: 'warrior_bold', level: 28, stars: 3 },
+      { templateId: 'archer_swift', level: 30, stars: 2 },
+    ],
+    rewards: { gold: 700, xp: 350 },
+  },
+  {
+    id: '7-3',
+    chapter: 7,
+    stage: 3,
+    name: 'Wraith Citadel',
+    difficulty: 33,
+    energyCost: 10,
+    enemyTeam: [
+      { templateId: 'tank_iron', level: 33, stars: 3 },
+      { templateId: 'healer_light', level: 32, stars: 2 },
+      { templateId: 'mage_fire', level: 33, stars: 2 },
+      { templateId: 'warrior_bold', level: 31, stars: 3 },
+    ],
+    rewards: { gold: 750, xp: 375, heroShards: { templateId: 'tank_iron', count: 5 } },
+  },
+
+  // Chapter 8: Abyssal Depths (4 enemies, levels 33-40, 2-3 stars)
+  {
+    id: '8-1',
+    chapter: 8,
+    stage: 1,
+    name: 'Sunken Temple',
+    difficulty: 35,
+    energyCost: 10,
+    enemyTeam: [
+      { templateId: 'mage_fire', level: 33, stars: 3 },
+      { templateId: 'healer_light', level: 34, stars: 2 },
+      { templateId: 'warrior_bold', level: 35, stars: 2 },
+      { templateId: 'archer_swift', level: 34, stars: 3 },
+    ],
+    rewards: { gold: 800, xp: 400 },
+  },
+  {
+    id: '8-2',
+    chapter: 8,
+    stage: 2,
+    name: 'Leviathan\'s Maw',
+    difficulty: 38,
+    energyCost: 10,
+    enemyTeam: [
+      { templateId: 'tank_iron', level: 37, stars: 3 },
+      { templateId: 'mage_fire', level: 38, stars: 3 },
+      { templateId: 'archer_swift', level: 36, stars: 3 },
+      { templateId: 'healer_light', level: 37, stars: 2 },
+    ],
+    rewards: { gold: 860, xp: 430 },
+  },
+  {
+    id: '8-3',
+    chapter: 8,
+    stage: 3,
+    name: 'Kraken\'s Lair',
+    difficulty: 40,
+    energyCost: 10,
+    enemyTeam: [
+      { templateId: 'tank_iron', level: 40, stars: 3 },
+      { templateId: 'warrior_bold', level: 39, stars: 3 },
+      { templateId: 'mage_fire', level: 40, stars: 3 },
+      { templateId: 'healer_light', level: 38, stars: 3 },
+    ],
+    rewards: { gold: 920, xp: 460, heroShards: { templateId: 'mage_fire', count: 5 } },
+  },
+
+  // Chapter 9: Demon Wastes (4 enemies, levels 40-45, 3 stars)
+  {
+    id: '9-1',
+    chapter: 9,
+    stage: 1,
+    name: 'Hellfire Plains',
+    difficulty: 42,
+    energyCost: 10,
+    enemyTeam: [
+      { templateId: 'warrior_bold', level: 40, stars: 3 },
+      { templateId: 'mage_fire', level: 41, stars: 3 },
+      { templateId: 'tank_iron', level: 42, stars: 3 },
+      { templateId: 'archer_swift', level: 40, stars: 3 },
+    ],
+    rewards: { gold: 1000, xp: 500 },
+  },
+  {
+    id: '9-2',
+    chapter: 9,
+    stage: 2,
+    name: 'Soul Furnace',
+    difficulty: 44,
+    energyCost: 10,
+    enemyTeam: [
+      { templateId: 'tank_iron', level: 43, stars: 3 },
+      { templateId: 'healer_light', level: 43, stars: 3 },
+      { templateId: 'mage_fire', level: 44, stars: 3 },
+      { templateId: 'warrior_bold', level: 42, stars: 3 },
+    ],
+    rewards: { gold: 1080, xp: 540 },
+  },
+  {
+    id: '9-3',
+    chapter: 9,
+    stage: 3,
+    name: 'Demon Lord\'s Throne',
+    difficulty: 45,
+    energyCost: 10,
+    enemyTeam: [
+      { templateId: 'tank_iron', level: 45, stars: 3 },
+      { templateId: 'warrior_bold', level: 45, stars: 3 },
+      { templateId: 'mage_fire', level: 45, stars: 3 },
+      { templateId: 'healer_light', level: 44, stars: 3 },
+    ],
+    rewards: { gold: 1160, xp: 580, heroShards: { templateId: 'warrior_bold', count: 10 } },
+  },
+
+  // Chapter 10: Eternal Spire - Boss Chapter (5 enemies, levels 45-60, 3-4 stars)
+  {
+    id: '10-1',
+    chapter: 10,
+    stage: 1,
+    name: 'Spire Entrance',
+    difficulty: 50,
+    energyCost: 12,
+    enemyTeam: [
+      { templateId: 'tank_iron', level: 48, stars: 3 },
+      { templateId: 'warrior_bold', level: 47, stars: 3 },
+      { templateId: 'mage_fire', level: 50, stars: 3 },
+      { templateId: 'healer_light', level: 48, stars: 3 },
+      { templateId: 'archer_swift', level: 47, stars: 3 },
+    ],
+    rewards: { gold: 1300, xp: 650 },
+  },
+  {
+    id: '10-2',
+    chapter: 10,
+    stage: 2,
+    name: 'Hall of Champions',
+    difficulty: 55,
+    energyCost: 12,
+    enemyTeam: [
+      { templateId: 'tank_iron', level: 53, stars: 4 },
+      { templateId: 'warrior_bold', level: 52, stars: 3 },
+      { templateId: 'mage_fire', level: 55, stars: 4 },
+      { templateId: 'healer_light', level: 53, stars: 3 },
+      { templateId: 'archer_swift', level: 54, stars: 4 },
+    ],
+    rewards: { gold: 1500, xp: 750, heroShards: { templateId: 'tank_iron', count: 10 } },
+  },
+  {
+    id: '10-3',
+    chapter: 10,
+    stage: 3,
+    name: 'The Eternal Throne',
+    difficulty: 60,
+    energyCost: 12,
+    enemyTeam: [
+      { templateId: 'tank_iron', level: 58, stars: 4 },
+      { templateId: 'warrior_bold', level: 57, stars: 4 },
+      { templateId: 'mage_fire', level: 60, stars: 4 },
+      { templateId: 'healer_light', level: 58, stars: 4 },
+      { templateId: 'archer_swift', level: 59, stars: 4 },
+    ],
+    rewards: { gold: 2000, xp: 1000, heroShards: { templateId: 'healer_light', count: 10 } },
+  },
+];
+
+/**
+ * Retrieves a campaign stage by its ID.
+ */
+export function getStage(stageId: string): CampaignStage | undefined {
+  return CAMPAIGN_STAGES.find((s) => s.id === stageId);
+}

@@ -29,6 +29,7 @@ export interface SkillEffect {
   type: 'heal' | 'buff' | 'debuff' | 'dot' | 'shield';
   value: number;
   duration: number;
+  stat?: keyof HeroStats;
 }
 
 export interface HeroStats {

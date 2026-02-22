@@ -28,7 +28,7 @@ const heroTemplates = [
         damage: 0,
         cooldown: 4,
         target: 'self',
-        effect: { type: 'buff', value: 20, duration: 3 },
+        effect: { type: 'buff', value: 20, duration: 3, stat: 'attack' },
       },
     ]),
     spriteKey: 'hero_warrior',
@@ -133,13 +133,13 @@ const heroTemplates = [
     baseSpeed: 50,
     skills: JSON.stringify([
       {
-        id: 'tank-taunt',
-        name: 'Taunt',
-        description: 'Forces all enemies to attack this hero for 2 turns',
+        id: 'tank-fortify',
+        name: 'Defensive Stance',
+        description: 'Increases defense by 30% for 2 turns',
         damage: 0,
         cooldown: 4,
         target: 'self',
-        effect: { type: 'buff', value: 30, duration: 2 },
+        effect: { type: 'buff', value: 30, duration: 2, stat: 'defense' },
       },
       {
         id: 'tank-slam',

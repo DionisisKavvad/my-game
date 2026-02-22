@@ -1,4 +1,4 @@
-import { HeroStats } from './hero';
+import { HeroStats, SkillEffect } from './hero';
 
 export interface BattleHero {
   id: string;
@@ -18,13 +18,16 @@ export interface BattleSkill {
   cooldown: number;
   currentCooldown: number;
   target: 'single' | 'all' | 'self' | 'ally';
+  effect?: SkillEffect;
 }
 
 export interface StatusEffect {
+  id: string;
   type: 'heal' | 'buff' | 'debuff' | 'dot' | 'shield';
   value: number;
   remainingTurns: number;
   stat?: keyof HeroStats;
+  sourceId?: string;
 }
 
 export interface TurnAction {
@@ -60,4 +63,33 @@ export interface BattleSummary {
   durationMs: number;
   validated: boolean;
   createdAt: Date;
+}
+
+export interface BattleInitialState {
+  playerTeam: BattleHero[];
+  enemyTeam: BattleHero[];
+}
+
+export interface BattleValidationResult {
+  valid: boolean;
+  mismatchTurn?: number;
+  reason?: string;
+}
+
+export interface BattleStartResponse {
+  battleId: string;
+  seed: number;
+  seedHash: string;
+  enemyTeam: BattleHero[];
+}
+
+export interface BattleCompleteResponse {
+  result: BattleResult;
+  validated: boolean;
+  rewards: {
+    gold: number;
+    xp: number;
+    heroXp: number;
+  };
+  starsEarned: number;
 }

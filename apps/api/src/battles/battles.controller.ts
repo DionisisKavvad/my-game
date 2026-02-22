@@ -3,6 +3,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { BattlesService } from './battles.service';
 import { StartBattleDto } from './dto/start-battle.dto';
 import { CompleteBattleDto } from './dto/complete-battle.dto';
+import { BattleLog } from '@hero-wars/shared';
 
 @Controller('battles')
 @UseGuards(JwtAuthGuard)
@@ -25,7 +26,7 @@ export class BattlesController {
     return this.battlesService.completeBattle(
       req.user.userId,
       dto.battleId,
-      dto.clientLog,
+      dto.clientLog as unknown as BattleLog,
     );
   }
 }
