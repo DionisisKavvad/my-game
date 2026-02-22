@@ -1,0 +1,613 @@
+⚔️  HERO WARS CLONE
+MVP Architecture Blueprint
+Phase 1 — Ship Fast, Ship Right
+Φεβρουάριος 2025  •  v1.0
+Stack: Angular  •  NestJS  •  PostgreSQL  •  Redis  •  AWS Lambda
+
+1. Overview & Goals
+
+Στόχος του MVP είναι να έχουμε ένα παιχνίδι αρχιτεκτονικά σωστό, που να τρέχει γρήγορα και να μπορεί να κλιμακωθεί. Δεν χρειαζόμαστε real-time WebSockets ακόμα — όλα τα battles είναι asynchronous και validated στον server.
+
+🎯  MVP Scope — Τι Περιλαμβάνει
+✅  Authentication (JWT + Refresh Tokens)
+✅  Hero Collection (5 αρχικοί heroes)
+✅  Turn-based PvE Battle Engine (client-side simulation + server validation)
+✅  Hero Upgrade System (levels, stars, equipment slots)
+✅  Campaign Map (10 stages, 3 missions each)
+✅  Basic Economy (gold, gems, energy)
+✅  Daily Quests
+✅  Leaderboard (Redis Sorted Sets)
+❌  PvP real-time (Phase 2)
+❌  Guild System (Phase 2)
+❌  Gacha / Shop (Phase 2)
+
+
+2. Tech Stack Επιλογές
+
+2.1 Frontend
+Layer
+Τεχνολογία / Λόγος
+Framework
+Angular 17 — το ξέρεις, standalone components, signals
+Game Engine
+Phaser 3 — 2D WebGL renderer, built-in physics, animations
+State Management
+NgRx Signals Store — lightweight, reactive game state
+HTTP Client
+Angular HttpClient + Interceptors για JWT auto-refresh
+Build Tool
+Vite (via @analogjs) ή Angular CLI με esbuild — πολύ γρήγορο build
+Styling
+Tailwind CSS για UI, Phaser για game canvas
+Asset Loading
+Phaser Loader Plugin — sprites, atlases, audio
+
+2.2 Backend
+Layer
+Τεχνολογία / Λόγος
+Framework
+NestJS — Angular-like structure, decorators, DI. Θα νιώθεις σπίτι σου
+Language
+TypeScript — shared types με frontend (monorepo)
+ORM
+TypeORM ή Prisma — Prisma προτείνεται για type safety & migrations
+Validation
+class-validator + class-transformer (NestJS built-in)
+Auth
+Passport.js + JWT Strategy (NestJS module)
+Battle Validation
+Ίδια game logic library shared μεταξύ frontend/backend (monorepo)
+Scheduled Jobs
+NestJS Schedule (@Cron) για daily resets, energy regen
+
+2.3 Database & Cache
+Service
+Χρήση
+PostgreSQL 15
+Primary DB: players, heroes, battles, inventory, campaign progress
+Redis 7
+Sessions, leaderboard (Sorted Sets), rate limiting, daily quest cache
+S3
+Game assets: sprites, audio, animation atlases (served via CloudFront)
+
+
+3. Monorepo Structure
+
+Χρησιμοποιούμε Nx monorepo ώστε frontend, backend και shared game logic να μοιράζονται τύπους, interfaces και το battle engine.
+
+hero-wars/
+├── apps/
+│   ├── client/               ← Angular app (game frontend)
+│   └── api/                  ← NestJS app (REST API)
+├── libs/
+│   ├── shared/               ← Shared TypeScript interfaces
+│   │   ├── models/           ← Hero, Battle, Player, Item types
+│   │   └── constants/        ← Game formulas, config
+│   ├── battle-engine/        ← 🔑 ΚΡΙΣΙΜΟ: Κοινός battle simulator
+│   │   ├── simulator.ts      ← Τρέχει και client-side και server-side
+│   │   ├── damage.ts         ← Damage calculations
+│   │   └── ai.ts             ← Enemy AI logic
+│   └── ui/                   ← Shared Angular components (buttons, modals)
+├── nx.json
+├── package.json
+└── tsconfig.base.json
+
+💡 Γιατί Shared Battle Engine;
+Το battle engine τρέχει client-side για instant feedback (animations, results).
+Ο server τρέχει ΑΚΡΙΒΩΣ τον ίδιο κώδικα για validation — αποτρέπει cheating.
+Χρησιμοποιούμε deterministic RNG (seeded random) ώστε τα αποτελέσματα να είναι πάντα ίδια.
+Αν client result ≠ server result → reject + flag account.
+
+
+4. AWS Architecture — Phase 1 (Serverless)
+
+Για το MVP χρησιμοποιούμε fully serverless setup. Zero infrastructure management, auto-scaling, pay-per-use. Μόλις αυξηθεί ο load μεταβαίνουμε σε ECS για hot endpoints.
+
+┌─────────────────────────────────────────────────────────────┐
+│                        USERS                                │
+└─────────────────────────┬───────────────────────────────────┘
+                          │ HTTPS
+┌─────────────────────────▼───────────────────────────────────┐
+│                    CloudFront CDN                           │
+│  • Angular app (S3 origin)                                  │
+│  • Game assets: sprites, audio (S3 origin)                  │
+│  • API calls forwarded to API Gateway                       │
+│  • Cache-Control headers per resource type                  │
+└────────┬──────────────────────────┬───────────────────────  ┘
+         │ /api/*                   │ /assets/*
+┌────────▼──────────┐    ┌──────────▼─────────────────────┐
+│   API Gateway     │    │   S3 Bucket (assets)           │
+│   HTTP API v2     │    │   sprites/, audio/, atlases/   │
+└────────┬──────────┘    └────────────────────────────────┘
+         │
+┌────────▼──────────────────────────────────────────────────┐
+│                  Lambda Functions                          │
+│  ┌──────────────┐  ┌────────────┐  ┌──────────────────┐  │
+│  │ auth-service │  │ hero-svc   │  │ battle-service   │  │
+│  │ /auth/*      │  │ /heroes/*  │  │ /battles/*       │  │
+│  └──────┬───────┘  └─────┬──────┘  └────────┬─────────┘  │
+│         │                │                   │             │
+│  ┌──────▼───────────────▼───────────────────▼──────────┐  │
+│  │              Lambda Layer: game-core                  │  │
+│  │         (shared business logic, battle engine)        │  │
+│  └──────────────────────────────────────────────────────┘  │
+└────────┬──────────────────────────────────────────────────┘
+         │
+┌────────▼──────────────────────────────────────────────────┐
+│  ┌─────────────────────┐   ┌────────────────────────────┐ │
+│  │  RDS PostgreSQL      │   │  ElastiCache Redis         │ │
+│  │  (Multi-AZ Replica)  │   │  (cluster mode off, MVP)   │ │
+│  └─────────────────────┘   └────────────────────────────┘ │
+└───────────────────────────────────────────────────────────┘
+
+
+4.1 AWS Services Breakdown
+Service
+Config / Size
+Κόστος/μήνα (est.)
+CloudFront
+Default distribution + WAF basic
+~$5
+S3 (frontend)
+Static website hosting
+< $1
+S3 (assets)
+Game sprites, audio files
+~$3
+API Gateway HTTP v2
+Regional, throttle: 1000 rps
+~$3
+Lambda
+5 functions, 512MB, arm64
+~$8
+RDS PostgreSQL
+db.t4g.small, 20GB, Multi-AZ
+~$35
+ElastiCache Redis
+cache.t4g.micro, single node
+~$12
+Route 53
+Hosted zone + health checks
+~$1
+ACM
+SSL Certificate
+Free
+CloudWatch
+Logs + basic alarms
+~$3
+ΣΥΝΟΛΟ
+MVP (< 1000 DAU)
+~$70/μήνα
+
+⚠️ Cold Start Αντιμετώπιση (Lambda)
+Χρησιμοποιούμε Provisioned Concurrency μόνο για auth-service (πιο κρίσιμο endpoint).
+arm64 (Graviton) Lambdas: 20% φθηνότερες και ~15% γρηγορότερες από x86.
+Lambda Layers για το game-core module αποφεύγουν cold start overhead από heavy imports.
+HTTP API Gateway v2 (όχι REST API v1) — 60% φθηνότερο, built-in JWT authorizer.
+RDS Proxy μπροστά από PostgreSQL για connection pooling (Lambda ανοίγει πολλές connections).
+
+
+
+5. Database Schema (PostgreSQL)
+
+5.1 Core Tables
+-- Players
+CREATE TABLE players (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  username      VARCHAR(32) UNIQUE NOT NULL,
+  email         VARCHAR(255) UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  level         INT DEFAULT 1,
+  xp            INT DEFAULT 0,
+  gold          INT DEFAULT 1000,
+  gems          INT DEFAULT 50,
+  energy        INT DEFAULT 60,
+  max_energy    INT DEFAULT 60,
+  energy_regen_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  last_login    TIMESTAMPTZ
+);
+
+-- Hero Templates (static game data)
+CREATE TABLE hero_templates (
+  id            VARCHAR(32) PRIMARY KEY,  -- e.g. "warrior_blade"
+  name          VARCHAR(64) NOT NULL,
+  class         VARCHAR(32) NOT NULL,     -- warrior, mage, healer, archer, tank
+  rarity        VARCHAR(16) NOT NULL,     -- common, rare, epic, legendary
+  base_hp       INT NOT NULL,
+  base_attack   INT NOT NULL,
+  base_defense  INT NOT NULL,
+  base_speed    INT NOT NULL,
+  skills        JSONB NOT NULL,           -- skill definitions
+  sprite_key    VARCHAR(64) NOT NULL
+);
+
+-- Player Heroes (instances)
+CREATE TABLE player_heroes (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  player_id     UUID REFERENCES players(id) ON DELETE CASCADE,
+  template_id   VARCHAR(32) REFERENCES hero_templates(id),
+  level         INT DEFAULT 1,
+  stars         INT DEFAULT 1,     -- 1-6 star upgrade
+  xp            INT DEFAULT 0,
+  equipment     JSONB DEFAULT '{}',  -- slot -> item_id
+  is_in_team    BOOLEAN DEFAULT FALSE,
+  team_position INT,               -- 0-4 position in battle team
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Battles (log για validation)
+CREATE TABLE battles (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  player_id     UUID REFERENCES players(id),
+  stage_id      VARCHAR(32) NOT NULL,
+  rng_seed      BIGINT NOT NULL,
+  result        VARCHAR(16) NOT NULL,    -- win, lose
+  battle_log    JSONB NOT NULL,           -- full turn-by-turn log
+  validated     BOOLEAN DEFAULT FALSE,
+  reward_gold   INT DEFAULT 0,
+  reward_xp     INT DEFAULT 0,
+  duration_ms   INT,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Campaign Progress
+CREATE TABLE campaign_progress (
+  player_id     UUID REFERENCES players(id),
+  stage_id      VARCHAR(32) NOT NULL,
+  stars         INT DEFAULT 0,           -- 0-3 stars
+  best_time_ms  INT,
+  completed_at  TIMESTAMPTZ,
+  PRIMARY KEY (player_id, stage_id)
+);
+
+-- Daily Quests
+CREATE TABLE daily_quests (
+  player_id     UUID REFERENCES players(id),
+  quest_id      VARCHAR(32) NOT NULL,
+  progress      INT DEFAULT 0,
+  completed     BOOLEAN DEFAULT FALSE,
+  claimed       BOOLEAN DEFAULT FALSE,
+  reset_date    DATE DEFAULT CURRENT_DATE,
+  PRIMARY KEY (player_id, quest_id)
+);
+
+5.2 Indexes για Performance
+-- Κρίσιμα indexes
+CREATE INDEX idx_player_heroes_player ON player_heroes(player_id);
+CREATE INDEX idx_battles_player ON battles(player_id, created_at DESC);
+CREATE INDEX idx_campaign_player ON campaign_progress(player_id);
+CREATE INDEX idx_daily_quests_reset ON daily_quests(player_id, reset_date);
+
+-- Partial index για active team
+CREATE INDEX idx_team_members ON player_heroes(player_id)
+  WHERE is_in_team = TRUE;
+
+
+6. API Design (REST)
+
+6.1 Endpoints
+Method + Path
+Description
+Auth Required
+POST /auth/register
+Εγγραφή νέου παίκτη
+No
+POST /auth/login
+Login, επιστρέφει JWT + refresh
+No
+POST /auth/refresh
+Ανανέωση access token
+Refresh Token
+POST /auth/logout
+Invalidate refresh token
+Yes
+GET /players/me
+Profile, stats, currency
+Yes
+GET /heroes
+Λίστα heroes του player
+Yes
+POST /heroes/:id/upgrade
+Level up hero
+Yes
+PUT /team
+Ενημέρωση battle team
+Yes
+GET /campaign
+Διαθέσιμα stages
+Yes
+POST /battles/start
+Ξεκινά battle, επιστρέφει RNG seed
+Yes
+POST /battles/:id/complete
+Υποβολή battle log για validation
+Yes
+GET /quests/daily
+Daily quests status
+Yes
+POST /quests/:id/claim
+Claim quest reward
+Yes
+GET /leaderboard
+Top 100 players (Redis)
+Yes
+
+6.2 Battle Flow — Πώς Λειτουργεί
+1. Client: POST /battles/start { stage_id, team_ids[] }
+   Server: Validates energy, creates battle record, returns { battle_id, rng_seed, enemy_config }
+
+2. Client: Τρέχει battle simulation τοπικά με το shared battle engine
+   → Animations, sound effects, real-time feedback στον παίκτη
+   → Παράγει deterministic battle_log από το rng_seed
+
+3. Client: POST /battles/:id/complete { result, battle_log, duration_ms }
+   Server:
+     a. Παίρνει το battle από DB (έχει το rng_seed)
+     b. Τρέχει ΤΟΝ ΙΔΙΟ battle engine με το ΙΔΙΟ seed
+     c. Συγκρίνει τα αποτελέσματα turn-by-turn
+     d. Αν match → δίνει rewards, ενημερώνει campaign progress
+     e. Αν mismatch → reject, log suspicious activity
+
+
+
+7. Battle Engine Design
+
+Το battle engine είναι η πιο κρίσιμη βιβλιοθήκη. Πρέπει να είναι 100% deterministic (ίδιο seed → ίδιο αποτέλεσμα πάντα), side-effect free, και να τρέχει σε browser και Node.js.
+
+7.1 Core Interfaces (Shared Types)
+// libs/shared/models/battle.ts
+
+export interface HeroStats {
+  hp: number;
+  maxHp: number;
+  attack: number;
+  defense: number;
+  speed: number;
+  skills: Skill[];
+}
+
+export interface BattleHero extends HeroStats {
+  id: string;
+  name: string;
+  side: "player" | "enemy";
+  buffs: Buff[];
+  cooldowns: Map<string, number>;
+}
+
+export interface TurnAction {
+  turn: number;
+  actorId: string;
+  type: "attack" | "skill" | "buff" | "debuff";
+  targetId: string;
+  damage?: number;
+  heal?: number;
+  rngValue: number;   // ← κρίσιμο για validation
+}
+
+export interface BattleResult {
+  winner: "player" | "enemy";
+  turns: TurnAction[];
+  totalDamage: number;
+  duration: number;   // turns
+}
+
+7.2 Damage Formula
+// libs/battle-engine/damage.ts
+
+export function calculateDamage(
+  attacker: HeroStats,
+  defender: HeroStats,
+  rng: SeededRandom,
+  isCrit = false
+): number {
+  const base = attacker.attack * 1.5 - defender.defense * 0.8;
+  const variance = 1 + (rng.next() * 0.2 - 0.1); // ±10% variance
+  const critMult = isCrit ? 1.8 : 1.0;
+  return Math.max(1, Math.floor(base * variance * critMult));
+}
+
+// Deterministic seeded RNG (Mulberry32)
+export class SeededRandom {
+  private seed: number;
+  constructor(seed: number) { this.seed = seed; }
+  next(): number {
+    this.seed |= 0;
+    this.seed = this.seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(this.seed ^ this.seed >>> 15, 1 | this.seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }
+}
+
+
+8. Frontend Architecture (Angular + Phaser)
+
+8.1 Module Structure
+apps/client/src/
+├── app/
+│   ├── core/
+│   │   ├── auth/                ← AuthService, JWT interceptor, guards
+│   │   ├── api/                 ← ApiService wrappers per domain
+│   │   └── state/               ← NgRx Signals: player, heroes, campaign
+│   ├── features/
+│   │   ├── lobby/               ← Main hub (map, hero selection)
+│   │   ├── battle/              ← Phaser game component
+│   │   │   ├── battle.component.ts
+│   │   │   ├── scenes/
+│   │   │   │   ├── PreloadScene.ts   ← Asset loading
+│   │   │   │   ├── BattleScene.ts    ← Main battle loop
+│   │   │   │   └── ResultScene.ts    ← Win/lose screen
+│   │   │   └── objects/
+│   │   │       ├── HeroSprite.ts
+│   │   │       └── SkillEffect.ts
+│   │   ├── heroes/              ← Hero collection, upgrades
+│   │   ├── campaign/            ← Map, stage selection
+│   │   └── profile/             ← Stats, quests, leaderboard
+│   └── shared/
+│       └── ui/                  ← Buttons, modals, resource bars
+
+8.2 Phaser + Angular Integration
+Το Phaser τρέχει σε ένα canvas μέσα σε Angular component. Η επικοινωνία γίνεται μέσω EventBus (simple RxJS Subject).
+
+// battle.component.ts
+@Component({
+  template: `<div id="phaser-container"></div>`,
+})
+export class BattleComponent implements OnInit, OnDestroy {
+  private game!: Phaser.Game;
+
+  ngOnInit() {
+    this.game = new Phaser.Game({
+      type: Phaser.AUTO,          // WebGL → fallback Canvas
+      parent: "phaser-container",
+      width: 960, height: 540,
+      transparent: true,          // Angular UI overlays on top
+      scene: [PreloadScene, BattleScene, ResultScene],
+    });
+    // Inject Angular services into Phaser via registry
+    this.game.registry.set("battleService", this.battleService);
+    this.game.registry.set("eventBus", this.eventBus);
+  }
+
+  ngOnDestroy() { this.game.destroy(true); }
+}
+
+
+9. Redis — Τι Αποθηκεύουμε & Γιατί
+
+Key Pattern
+Type
+Χρήση
+session:{token}
+String (JSON)
+Refresh token validation, TTL: 30 days
+energy:{player_id}
+String (JSON)
+Energy regen tracking, TTL: 24h
+leaderboard:global
+Sorted Set
+ZADD με score=player_power, ZRANGE για top 100
+ratelimit:{ip}:{endpoint}
+String (counter)
+Rate limiting, TTL: 1 minute
+quest:{player_id}:{date}
+Hash
+Daily quest progress cache, TTL: 24h
+battle:lock:{player_id}
+String
+Prevents concurrent battles, TTL: 30s
+
+// Leaderboard — Πώς λειτουργεί
+
+// Μετά από κάθε hero upgrade:
+await redis.zadd("leaderboard:global", playerPower, playerId);
+
+// Get top 100:
+const top100 = await redis.zrange("leaderboard:global", 0, 99, { REV: true });
+
+// Get player rank:
+const rank = await redis.zrank("leaderboard:global", playerId, { REV: true });
+
+
+
+10. CI/CD Pipeline
+
+GitHub Push/PR
+     │
+     ▼
+GitHub Actions:
+  ├── Lint (ESLint, Prettier)
+  ├── Type Check (tsc --noEmit)
+  ├── Unit Tests (Jest)
+  └── Build check (Nx affected)
+     │
+     ▼ (merge to main)
+Deploy Pipeline:
+  ├── 1. Build Angular app → Upload to S3
+  ├── 2. CloudFront invalidation
+  ├── 3. Build Lambda functions (esbuild bundling)
+  ├── 4. Run DB migrations (Prisma migrate deploy)
+  └── 5. Deploy Lambdas (AWS CDK deploy)
+
+10.1 Infrastructure as Code — AWS CDK
+Χρησιμοποιούμε AWS CDK (TypeScript) για να ορίσουμε όλη την infrastructure. Αυτό μας δίνει version-controlled infra και easy replication για staging/production environments.
+
+// infra/stacks/api-stack.ts (AWS CDK)
+
+const apiFunction = new Function(this, "ApiFunction", {
+  runtime: Runtime.NODEJS_20_X,
+  architecture: Architecture.ARM_64,  // Graviton, φθηνότερο
+  handler: "main.handler",
+  code: Code.fromAsset("dist/apps/api"),
+  layers: [gameCoreLayer],
+  environment: {
+    DATABASE_URL: rdsProxy.endpoint,
+    REDIS_URL: redis.attrRedisEndpointAddress,
+  },
+  timeout: Duration.seconds(10),
+  memorySize: 512,
+});
+
+const api = new HttpApi(this, "GameApi", {
+  defaultAuthorizer: new HttpJwtAuthorizer(...),
+  corsPreflight: { allowOrigins: ["https://game.yourdomain.com"] },
+});
+
+
+11. Security Checklist
+
+🔐 Authentication & Authorization
+Access Token: JWT, RS256 (asymmetric), TTL: 15 λεπτά
+Refresh Token: Opaque string, αποθηκεύεται σε Redis, TTL: 30 μέρες
+Refresh Token Rotation: κάθε refresh → νέο token, invalidate παλιό
+HttpOnly Cookie για refresh token (όχι localStorage)
+Rate Limiting: 10 login attempts/minute per IP
+
+🛡️ Game Security (Anti-Cheat)
+Battle validation server-side με deterministic battle engine
+Battle lock: ένα active battle ανά παίκτη (Redis lock)
+Reward validation: server υπολογίζει rewards, όχι client
+Input sanitization: class-validator σε όλα τα DTOs
+SQL Injection: protected μέσω Prisma ORM (parameterized queries)
+WAF rules: CloudFront + AWS WAF για basic protection
+
+
+12. Development Roadmap
+
+Sprint
+Tasks
+Εβδομάδες
+Sprint 1 — Foundation
+Monorepo setup (Nx), AWS CDK infra, DB schema, auth system
+1-2
+Sprint 2 — Heroes
+Hero templates, player heroes, team builder, hero upgrade
+3-4
+Sprint 3 — Battle Engine
+Shared battle engine, damage formulas, AI, server validation
+5-6
+Sprint 4 — Phaser UI
+Battle scene, hero sprites, skill animations, result screen
+7-8
+Sprint 5 — Campaign
+Stage definitions, campaign map, progress tracking, rewards
+9-10
+Sprint 6 — Meta
+Daily quests, leaderboard, energy system, player profile
+11-12
+Sprint 7 — Polish
+Bug fixes, performance optimization, load testing, soft launch
+13-14
+
+
+🚀 Key Takeaways
+1. Monorepo (Nx) = shared battle engine μεταξύ client/server → anti-cheat χωρίς duplication
+2. Serverless (Lambda + API GW) = zero infra management στο MVP, scale on demand
+3. RDS Proxy = λύνει το connection pooling πρόβλημα με Lambdas
+4. Deterministic RNG = server μπορεί να επαληθεύσει κάθε battle χωρίς να το τρέχει real-time
+5. Redis Sorted Sets = leaderboard O(log N) insert/query, έτοιμο για εκατομμύρια παίκτες
+6. Angular + Phaser = UI layer ξεχωριστό από game canvas, επικοινωνούν μέσω EventBus
+7. AWS CDK = infrastructure as code, staging + production environments με 1 command
+
+Hero Wars Clone MVP Architecture — v1.0
